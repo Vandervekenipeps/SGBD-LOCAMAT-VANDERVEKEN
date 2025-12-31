@@ -167,14 +167,51 @@ class MenuPrincipal:
         print("\n--- Ajout d'un nouvel article ---")
         
         try:
+            # Saisie des champs obligatoires avec validation
             categorie = input("Catégorie : ").strip()
-            marque = input("Marque : ").strip()
-            modele = input("Modèle : ").strip()
-            numero_serie = input("Numéro de série : ").strip()
-            date_achat_str = input("Date d'achat (YYYY-MM-DD) : ").strip()
-            prix_journalier = self._input_float("Prix journalier (€) : ")
+            if not categorie:
+                print("❌ La catégorie est obligatoire.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
             
-            date_achat = date.fromisoformat(date_achat_str)
+            marque = input("Marque : ").strip()
+            if not marque:
+                print("❌ La marque est obligatoire.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            modele = input("Modèle : ").strip()
+            if not modele:
+                print("❌ Le modèle est obligatoire.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            numero_serie = input("Numéro de série : ").strip()
+            if not numero_serie:
+                print("❌ Le numéro de série est obligatoire.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            # Saisie de la date avec validation
+            date_achat_str = input("Date d'achat (YYYY-MM-DD) : ").strip()
+            if not date_achat_str:
+                print("❌ La date d'achat est obligatoire. Format attendu : YYYY-MM-DD (ex: 2024-01-15)")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            try:
+                date_achat = date.fromisoformat(date_achat_str)
+            except ValueError:
+                print(f"❌ Format de date invalide. Format attendu : YYYY-MM-DD (ex: 2024-01-15)")
+                print(f"   Vous avez saisi : '{date_achat_str}'")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            prix_journalier = self._input_float("Prix journalier (€) : ")
+            if prix_journalier <= 0:
+                print("❌ Le prix journalier doit être supérieur à 0.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
             
             article = Article(
                 categorie=categorie,
@@ -291,9 +328,31 @@ class MenuPrincipal:
         print("\n--- Ajout d'un nouveau client ---")
         
         try:
+            # Saisie des champs obligatoires avec validation
             nom = input("Nom : ").strip()
+            if not nom:
+                print("❌ Le nom est obligatoire.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
             prenom = input("Prénom : ").strip()
+            if not prenom:
+                print("❌ Le prénom est obligatoire.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
             email = input("Email : ").strip()
+            if not email:
+                print("❌ L'email est obligatoire.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            # Validation basique de l'email
+            if '@' not in email or '.' not in email.split('@')[-1]:
+                print("❌ Format d'email invalide. Format attendu : exemple@domaine.com")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
             telephone = input("Téléphone (optionnel) : ").strip() or None
             adresse = input("Adresse (optionnel) : ").strip() or None
             est_vip_str = input("Client VIP ? (o/n) : ").strip().lower()
@@ -360,11 +419,34 @@ class MenuPrincipal:
                 input("\nAppuyez sur Entrée pour continuer...")
                 return
             
-            # 4. Saisir les dates
+            # 4. Saisir les dates avec validation
             date_debut_str = input("Date de début (YYYY-MM-DD) : ").strip()
+            if not date_debut_str:
+                print("❌ La date de début est obligatoire. Format attendu : YYYY-MM-DD (ex: 2024-01-15)")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            try:
+                date_debut = date.fromisoformat(date_debut_str)
+            except ValueError:
+                print(f"❌ Format de date invalide pour la date de début. Format attendu : YYYY-MM-DD")
+                print(f"   Vous avez saisi : '{date_debut_str}'")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
             date_fin_str = input("Date de fin (YYYY-MM-DD) : ").strip()
-            date_debut = date.fromisoformat(date_debut_str)
-            date_fin = date.fromisoformat(date_fin_str)
+            if not date_fin_str:
+                print("❌ La date de fin est obligatoire. Format attendu : YYYY-MM-DD (ex: 2024-01-20)")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            try:
+                date_fin = date.fromisoformat(date_fin_str)
+            except ValueError:
+                print(f"❌ Format de date invalide pour la date de fin. Format attendu : YYYY-MM-DD")
+                print(f"   Vous avez saisi : '{date_fin_str}'")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
             
             # 5. Calculer le prix (prévisualisation)
             articles = [ArticleRepository.get_by_id(self.db, aid) for aid in article_ids]
