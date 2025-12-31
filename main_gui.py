@@ -23,3 +23,4 @@ if __name__ == "__main__":
         print("2. La connexion à Neon est active")
         print("3. Les dépendances sont installées (pip install -r requirements.txt)")
 
+

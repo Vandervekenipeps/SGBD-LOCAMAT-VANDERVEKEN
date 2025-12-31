@@ -170,3 +170,5 @@ class FenetreTableauBord:
             )
             ttk.Label(frame_retard, text=text, font=("Arial", 10)).pack(anchor=tk.W)
 
+
+

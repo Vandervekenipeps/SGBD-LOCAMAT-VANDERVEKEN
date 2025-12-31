@@ -49,3 +49,4 @@ L'interface graphique respecte la même architecture 3-tier :
 
 Toute la logique métier reste dans la couche BLL, aucune requête SQL dans l'interface graphique.
 
+

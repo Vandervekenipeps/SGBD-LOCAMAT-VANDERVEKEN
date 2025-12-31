@@ -45,6 +45,12 @@ wheels/
 .DS_Store
 Thumbs.db
 
+# Configuration Python locale
+.python-version
+
+# Documents en cours de rédaction
+DOSSIER_TECHNIQUE.md
+
 # Logs
 *.log
 

@@ -95,14 +95,14 @@ class ServiceTransaction:
             # 5. Re-vérifier la disponibilité APRÈS le verrouillage (cas de concurrence)
             articles_disponibles = [
                 art for art in articles 
-                if art.statut == StatutArticle.DISPONIBLE
+                if art.statut == StatutArticle.DISPONIBLE  # type: ignore[comparison-overlap]
             ]
             
             if len(articles_disponibles) != len(article_ids):
                 # Un article n'est plus disponible (conflit de concurrence)
                 articles_indisponibles = [
                     art.id for art in articles 
-                    if art.statut != StatutArticle.DISPONIBLE
+                    if art.statut != StatutArticle.DISPONIBLE  # type: ignore[comparison-overlap]
                 ]
                 db.rollback()
                 return False, None, (
@@ -137,7 +137,7 @@ class ServiceTransaction:
                 db.add(article_contrat)
                 
                 # Changer le statut de l'article à "Loué"
-                article.statut = StatutArticle.LOUE
+                article.statut = StatutArticle.LOUE  # type: ignore[assignment]
             
             # 9. Commit de la transaction (tout ou rien)
             db.commit()
@@ -213,17 +213,17 @@ class ServiceTransaction:
                 return False, f"L'article {article_id} n'est pas dans le contrat {contrat_id}."
             
             # Changer le statut de l'article
-            if article.statut == StatutArticle.LOUE:
-                article.statut = StatutArticle.DISPONIBLE
+            if article.statut == StatutArticle.LOUE:  # type: ignore[comparison-overlap]
+                article.statut = StatutArticle.DISPONIBLE  # type: ignore[assignment]
             
             # Si tous les articles du contrat sont restitués, mettre à jour le contrat
             articles_du_contrat = ContratRepository.get_articles_du_contrat(db, contrat_id)
-            articles_loues = [a for a in articles_du_contrat if a.statut == StatutArticle.LOUE]
+            articles_loues = [a for a in articles_du_contrat if a.statut == StatutArticle.LOUE]  # type: ignore[comparison-overlap]
             
             if not articles_loues:
                 # Tous les articles sont restitués
-                contrat.statut = StatutContrat.TERMINE
-                contrat.date_retour_reelle = date.today()
+                contrat.statut = StatutContrat.TERMINE  # type: ignore[assignment]
+                contrat.date_retour_reelle = date.today()  # type: ignore[assignment]
             
             db.commit()
             return True, f"Article {article_id} restitué avec succès."
@@ -231,6 +231,7 @@ class ServiceTransaction:
         except Exception as e:
             db.rollback()
             return False, f"Erreur lors de la restitution : {str(e)}"
+
 
 
 
