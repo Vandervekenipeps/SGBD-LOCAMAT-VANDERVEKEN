@@ -23,3 +23,4 @@ Les contraintes principales (PK, FK, NOT NULL, UNIQUE, CHECK) sont définies dan
 Les triggers SQL offrent une protection supplémentaire au niveau de la base de données, mais la logique métier principale est gérée dans la couche BLL.
 
 
+
