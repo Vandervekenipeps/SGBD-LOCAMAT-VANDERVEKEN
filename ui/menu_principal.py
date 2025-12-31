@@ -319,7 +319,8 @@ class MenuPrincipal:
             print("=" * 80)
             print("1. Lister tous les clients")
             print("2. Ajouter un client")
-            print("3. Retour au menu principal")
+            print("3. Supprimer un client")
+            print("4. Retour au menu principal")
             
             choix = input("\nVotre choix : ").strip()
             
@@ -328,6 +329,8 @@ class MenuPrincipal:
             elif choix == "2":
                 self.ajouter_client()
             elif choix == "3":
+                self.supprimer_client()
+            elif choix == "4":
                 break
             else:
                 print("❌ Choix invalide.")
@@ -382,6 +385,14 @@ class MenuPrincipal:
                 return
             
             telephone = input("Téléphone (optionnel) : ").strip() or None
+            
+            # Validation du téléphone (BLL)
+            if telephone:
+                telephone_valide, msg_telephone = ServiceValidation.valider_telephone(telephone)
+                if not telephone_valide:
+                    print(f"❌ {msg_telephone}")
+                    input("\nAppuyez sur Entrée pour continuer...")
+                    return
             adresse = input("Adresse (optionnel) : ").strip() or None
             est_vip_str = input("Client VIP ? (o/n) : ").strip().lower()
             est_vip = est_vip_str == 'o'
@@ -397,6 +408,67 @@ class MenuPrincipal:
             
             client = ClientRepository.create(self.db, client)
             print(f"\n✅ Client créé avec succès (ID: {client.id})")
+            
+        except Exception as e:
+            print(f"\n❌ Erreur : {e}")
+        
+        input("\nAppuyez sur Entrée pour continuer...")
+    
+    def supprimer_client(self):
+        """Supprime un client."""
+        print("\n" + "=" * 80)
+        print("SUPPRESSION D'UN CLIENT")
+        print("=" * 80)
+        
+        # Afficher la liste des clients pour faciliter la sélection
+        clients = ClientRepository.get_all(self.db)
+        if not clients:
+            print("\n❌ Aucun client enregistré.")
+            input("\nAppuyez sur Entrée pour continuer...")
+            return
+        
+        print("\nListe des clients :")
+        print("-" * 80)
+        for client in clients:
+            vip_status = "⭐ VIP" if bool(client.est_vip) else ""
+            telephone = f" | Tél: {client.telephone}" if client.telephone is not None and str(client.telephone).strip() else ""
+            print(
+                f"ID: {client.id} | {client.prenom} {client.nom} | "
+                f"Email: {client.email}{telephone} {vip_status}"
+            )
+        print("-" * 80)
+        
+        try:
+            client_id = self._input_int("\nID du client à supprimer : ", allow_empty=True)
+            
+            if client_id is None:
+                print("❌ L'ID du client est obligatoire.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            # Demander confirmation
+            client = ClientRepository.get_by_id(self.db, client_id)
+            if not client:
+                print(f"❌ Client avec l'ID {client_id} introuvable.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            print(f"\n⚠️  ATTENTION : Vous êtes sur le point de supprimer :")
+            print(f"   Client ID {client.id} : {client.prenom} {client.nom} ({client.email})")
+            confirmation = input("\nÊtes-vous sûr de vouloir supprimer ce client ? (o/n) : ").strip().lower()
+            
+            if confirmation != 'o':
+                print("❌ Suppression annulée.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            # Supprimer le client
+            succes, message = ClientRepository.delete(self.db, client_id)
+            
+            if succes:
+                print(f"\n✅ {message}")
+            else:
+                print(f"\n❌ {message}")
             
         except Exception as e:
             print(f"\n❌ Erreur : {e}")

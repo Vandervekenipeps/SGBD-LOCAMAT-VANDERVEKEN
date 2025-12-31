@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from dal.models import Client
 from dal.repositories import ClientRepository
+from bll.validation import ServiceValidation
 
 
 class FenetreGestionClients:
@@ -42,6 +43,7 @@ class FenetreGestionClients:
         btn_frame.pack(pady=10)
         
         ttk.Button(btn_frame, text="➕ Ajouter un Client", command=self._ajouter_client).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="🗑️ Supprimer un Client", command=self._supprimer_client).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="🔄 Rafraîchir", command=self._charger_liste).pack(side=tk.LEFT, padx=5)
         
         # Liste des clients avec Treeview
@@ -107,6 +109,43 @@ class FenetreGestionClients:
     def _ajouter_client(self):
         """Ouvre une fenêtre pour ajouter un client."""
         FenetreAjoutClient(self.window, self.db, self._charger_liste)
+    
+    def _supprimer_client(self):
+        """Supprime le client sélectionné."""
+        selection = self.tree.selection()
+        if not selection:
+            messagebox.showwarning("Aucune sélection", "Veuillez sélectionner un client à supprimer.")
+            return
+        
+        # Récupérer l'ID du client sélectionné
+        item = self.tree.item(selection[0])
+        client_id = item['values'][0]
+        
+        # Récupérer les informations du client pour la confirmation
+        client = ClientRepository.get_by_id(self.db, client_id)
+        if not client:
+            messagebox.showerror("Erreur", f"Client avec l'ID {client_id} introuvable.")
+            return
+        
+        # Demander confirmation
+        message_confirmation = (
+            f"Êtes-vous sûr de vouloir supprimer ce client ?\n\n"
+            f"ID: {client.id}\n"
+            f"Nom: {client.prenom} {client.nom}\n"
+            f"Email: {client.email}"
+        )
+        
+        if not messagebox.askyesno("Confirmation de suppression", message_confirmation):
+            return
+        
+        # Supprimer le client
+        succes, message = ClientRepository.delete(self.db, client_id)
+        
+        if succes:
+            messagebox.showinfo("Succès", message)
+            self._charger_liste()
+        else:
+            messagebox.showerror("Erreur", message)
 
 
 class FenetreAjoutClient:
@@ -175,12 +214,20 @@ class FenetreAjoutClient:
                 messagebox.showerror("Erreur", "Format d'email invalide.")
                 return
             
+            # Validation du téléphone (BLL)
+            telephone = self.telephone.get().strip() or None
+            if telephone:
+                telephone_valide, msg_telephone = ServiceValidation.valider_telephone(telephone)
+                if not telephone_valide:
+                    messagebox.showerror("Erreur", msg_telephone)
+                    return
+            
             # Créer le client
             client = Client(
                 nom=self.nom.get(),
                 prenom=self.prenom.get(),
                 email=self.email.get(),
-                telephone=self.telephone.get() or None,
+                telephone=telephone,
                 adresse=self.adresse.get() or None,
                 est_vip=self.est_vip.get()
             )

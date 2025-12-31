@@ -12,7 +12,7 @@ pas de logique métier.
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func, desc
 from datetime import date, timedelta
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from decimal import Decimal
 
 from dal.models import Article, Client, Contrat, ArticleContrat, StatutArticle, StatutContrat
@@ -135,6 +135,45 @@ class ClientRepository:
     def get_by_email(db: Session, email: str) -> Optional[Client]:
         """Récupère un client par son email."""
         return db.query(Client).filter(Client.email == email).first()
+    
+    @staticmethod
+    def delete(db: Session, client_id: int) -> Tuple[bool, str]:
+        """
+        Supprime un client.
+        
+        ATTENTION : Cette opération échouera si le client a des contrats
+        (contrainte RESTRICT sur la FK dans la table contrats).
+        
+        Args:
+            db: Session de base de données
+            client_id: ID du client à supprimer
+            
+        Returns:
+            Tuple (succes, message)
+            - succes: True si la suppression a réussi, False sinon
+            - message: Message d'erreur ou de succès
+        """
+        client = ClientRepository.get_by_id(db, client_id)
+        if not client:
+            return False, f"Client avec l'ID {client_id} introuvable."
+        
+        # Vérifier si le client a des contrats
+        from dal.models import Contrat
+        contrats_count = db.query(Contrat).filter(Contrat.client_id == client_id).count()
+        if contrats_count > 0:
+            return False, (
+                f"Impossible de supprimer le client {client_id} ({client.prenom} {client.nom}). "
+                f"Le client a {contrats_count} contrat(s) associé(s). "
+                f"Veuillez d'abord supprimer ou terminer tous les contrats du client."
+            )
+        
+        try:
+            db.delete(client)
+            db.commit()
+            return True, f"Client {client_id} ({client.prenom} {client.nom}) supprimé avec succès."
+        except Exception as e:
+            db.rollback()
+            return False, f"Erreur lors de la suppression : {str(e)}"
     
     @staticmethod
     def a_eu_retard(db: Session, client_id: int) -> bool:
