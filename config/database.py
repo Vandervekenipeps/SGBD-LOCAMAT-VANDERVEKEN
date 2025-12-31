@@ -68,8 +68,7 @@ def init_db():
     pour créer les tables dans la base de données si elles n'existent pas.
     """
     # Importer tous les modèles ici pour qu'ils soient enregistrés
-    # (à faire quand les modèles seront créés)
-    # from dal.models import User, Product, etc.
+    from dal.models import Article, Client, Contrat, ArticleContrat
     
     # Créer toutes les tables
     Base.metadata.create_all(bind=engine)

@@ -1,18 +1,18 @@
 """
 Point d'entrée principal de l'application LOCAMAT.
 
-Ce fichier initialise l'application et peut servir de point de départ
-pour les tests ou le lancement de l'interface utilisateur.
+Ce fichier initialise l'application et lance l'interface utilisateur.
 """
 
 from config.database import init_db, engine
 from sqlalchemy import inspect
+from ui.menu_principal import MenuPrincipal
 
 def main():
     """
     Fonction principale de l'application.
     
-    Initialise la base de données et vérifie la connexion.
+    Initialise la base de données et lance le menu principal.
     """
     print("=" * 50)
     print("Application LOCAMAT - Gestion de Location de Matériel")
@@ -33,10 +33,13 @@ def main():
                 print("  Aucune table n'existe encore.")
         
         # Initialiser la base de données (créer les tables si nécessaire)
-        # Décommenter cette ligne une fois les modèles créés
-        # init_db()
+        init_db()
         
         print("\n✓ Application prête à être utilisée")
+        
+        # Lancer le menu principal
+        menu = MenuPrincipal()
+        menu.executer()
         
     except Exception as e:
         print(f"✗ Erreur lors de l'initialisation : {e}")
@@ -44,6 +47,8 @@ def main():
         print("  1. Le fichier .env existe et contient DATABASE_URL")
         print("  2. La connexion à Neon est active")
         print("  3. Les dépendances sont installées (pip install -r requirements.txt)")
+        import traceback
+        traceback.print_exc()
         return 1
     
     return 0
