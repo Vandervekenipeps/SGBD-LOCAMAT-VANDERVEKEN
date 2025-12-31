@@ -311,3 +311,4 @@ class ContratRepository:
             for r in result
         ]
 
+
