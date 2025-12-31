@@ -38,7 +38,7 @@ class TableauBord:
         print("=" * 80)
         
         # 1. Top 5 des matériels les plus rentables du mois
-        print("\n📊 TOP 5 DES MATÉRIELS LES PLUS RENTABLES DU MOIS")
+        print("\n[TOP 5] MATERIELS LES PLUS RENTABLES DU MOIS")
         print("-" * 80)
         top_5 = ContratRepository.get_top_5_rentables(db)
         
@@ -47,19 +47,19 @@ class TableauBord:
                 print(
                     f"{i}. {materiel['marque']} {materiel['modele']} "
                     f"({materiel['categorie']}) - "
-                    f"CA: {materiel['ca_total']:.2f} €"
+                    f"CA: {materiel['ca_total']:.2f} EUR"
                 )
         else:
-            print("Aucun matériel loué ce mois-ci.")
+            print("Aucun materiel loue ce mois-ci.")
         
         # 2. Chiffre d'affaires des 30 derniers jours
-        print("\n💰 CHIFFRE D'AFFAIRES DES 30 DERNIERS JOURS")
+        print("\n[CA] CHIFFRE D'AFFAIRES DES 30 DERNIERS JOURS")
         print("-" * 80)
         ca_30_jours = ContratRepository.get_ca_30_jours(db)
-        print(f"Total : {float(ca_30_jours):.2f} €")
+        print(f"Total : {float(ca_30_jours):.2f} EUR")
         
         # 3. Liste d'alerte : Articles en retard
-        print("\n⚠️  ALERTES - ARTICLES NON RESTITUÉS (DATE DÉPASSÉE)")
+        print("\n[ALERTE] ARTICLES NON RESTITUES (DATE DEPASSEE)")
         print("-" * 80)
         retards = ContratRepository.get_retards(db)
         
@@ -75,5 +75,6 @@ class TableauBord:
             print("Aucun retard à signaler.")
         
         print("\n" + "=" * 80)
+
 
 
