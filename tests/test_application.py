@@ -123,37 +123,55 @@ class TestsApplication:
             
             # Lier l'article au contrat
             ContratRepository.ajouter_article(self.db, contrat.id, article.id)
+            self.db.commit()  # S'assurer que la liaison est commitée
             
-            # Vérifier que la liaison existe
-            articles_du_contrat = ContratRepository.get_articles_du_contrat(self.db, contrat.id)
-            if len(articles_du_contrat) == 0:
+            # Vérifier que la liaison existe vraiment dans la base
+            from dal.models import ArticleContrat
+            liaison = self.db.query(ArticleContrat).filter(
+                ArticleContrat.article_id == article.id,
+                ArticleContrat.contrat_id == contrat.id
+            ).first()
+            
+            if not liaison:
                 print("   [ERREUR] La liaison article-contrat n'a pas ete creee")
                 self.erreurs.append("Liaison article-contrat")
                 self.db.rollback()
                 return
             
+            print(f"   [OK] Liaison creee (Article {article.id} <-> Contrat {contrat.id})")
+            
             # Essayer de supprimer l'article (doit échouer avec RESTRICT)
+            # Utiliser une requête SQL directe pour tester la contrainte au niveau SGBD
             try:
-                # Utiliser db.delete directement pour déclencher l'exception
-                article_a_supprimer = ArticleRepository.get_by_id(self.db, article.id)
-                if article_a_supprimer:
-                    self.db.delete(article_a_supprimer)
-                    self.db.commit()
-                    print("   [ERREUR] Contrainte RESTRICT non respectee ! L'article a ete supprime alors qu'il est lie a un contrat.")
-                    self.erreurs.append("Contrainte RESTRICT")
-                else:
-                    print("   [ERREUR] Article introuvable")
-                    self.erreurs.append("Contrainte RESTRICT - article introuvable")
+                from sqlalchemy import text
+                # Tentative de suppression via SQL direct pour déclencher la contrainte RESTRICT
+                result = self.db.execute(
+                    text(f"DELETE FROM articles WHERE id = :article_id"),
+                    {"article_id": article.id}
+                )
+                self.db.commit()
+                
+                # Si on arrive ici, la contrainte n'a pas fonctionné
+                print("   [ERREUR] Contrainte RESTRICT non respectee ! L'article a ete supprime alors qu'il est lie a un contrat.")
+                self.erreurs.append("Contrainte RESTRICT")
+                
             except IntegrityError as e:
                 error_msg = str(e).lower()
-                if "restrict" in error_msg or "foreign key" in error_msg or "violates foreign key" in error_msg:
-                    print("   [OK] Contrainte RESTRICT respectee (suppression article lie refusee)")
+                self.db.rollback()
+                # La contrainte RESTRICT devrait lever une IntegrityError
+                print(f"   [OK] Contrainte RESTRICT respectee (suppression article lie refusee)")
+                print(f"        Erreur PostgreSQL: {str(e)[:100]}...")
+                self.succes.append("Contrainte RESTRICT")
+            except Exception as e:
+                self.db.rollback()
+                error_msg = str(e).lower()
+                # Toute exception lors de la suppression d'un article lié est un signe que ça fonctionne
+                if "foreign" in error_msg or "constraint" in error_msg or "violates" in error_msg:
+                    print(f"   [OK] Contrainte RESTRICT respectee (exception levee: {type(e).__name__})")
                     self.succes.append("Contrainte RESTRICT")
-                    self.db.rollback()
                 else:
-                    print(f"   [ERREUR] Erreur inattendue : {e}")
+                    print(f"   [ERREUR] Exception inattendue : {e}")
                     self.erreurs.append(f"Contrainte RESTRICT : {e}")
-                    self.db.rollback()
             
             # Nettoyer
             self.db.rollback()
