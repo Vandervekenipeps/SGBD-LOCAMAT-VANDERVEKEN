@@ -12,7 +12,7 @@ Les contraintes d'intégrité sont définies ici :
 - Contraintes CHECK pour les validations métier
 """
 
-from sqlalchemy import Column, Integer, String, Date, Decimal, Boolean, ForeignKey, CheckConstraint, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, CheckConstraint, Enum as SQLEnum, Numeric
 from sqlalchemy.orm import relationship
 from datetime import date
 import enum
@@ -84,7 +84,7 @@ class Article(Base):
                    comment="Statut actuel de l'article")
     
     # Prix de location journalier (pour le calcul du CA)
-    prix_journalier = Column(Decimal(10, 2), nullable=False, 
+    prix_journalier = Column(Numeric(10, 2), nullable=False, 
                             comment="Prix de location par jour en euros")
     
     # Relations
@@ -169,7 +169,7 @@ class Contrat(Base):
                                comment="Date de retour effective (NULL si pas encore retourné)")
     
     # Prix calculé (par la couche BLL)
-    prix_total = Column(Decimal(10, 2), nullable=False,
+    prix_total = Column(Numeric(10, 2), nullable=False,
                        comment="Prix total calculé selon les règles métier")
     
     # Statut du contrat
@@ -243,4 +243,5 @@ class ArticleContrat(Base):
     
     def __repr__(self):
         return f"<ArticleContrat(article_id={self.article_id}, contrat_id={self.contrat_id})>"
+
 
