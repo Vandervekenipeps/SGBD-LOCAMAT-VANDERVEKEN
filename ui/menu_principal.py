@@ -28,6 +28,52 @@ class MenuPrincipal:
         """Initialise le menu principal."""
         self.db: Session = SessionLocal()
     
+    def _input_int(self, prompt: str, default: int = None) -> int:
+        """
+        Demande un entier à l'utilisateur avec gestion des erreurs.
+        
+        Args:
+            prompt: Message à afficher
+            default: Valeur par défaut si l'utilisateur appuie sur Entrée
+            
+        Returns:
+            L'entier saisi ou la valeur par défaut
+        """
+        while True:
+            try:
+                valeur = input(prompt).strip()
+                if not valeur and default is not None:
+                    return default
+                if not valeur:
+                    print("Veuillez saisir un nombre.")
+                    continue
+                return int(valeur)
+            except ValueError:
+                print("Erreur : veuillez saisir un nombre entier valide.")
+    
+    def _input_float(self, prompt: str, default: float = None) -> float:
+        """
+        Demande un nombre décimal à l'utilisateur avec gestion des erreurs.
+        
+        Args:
+            prompt: Message à afficher
+            default: Valeur par défaut si l'utilisateur appuie sur Entrée
+            
+        Returns:
+            Le nombre saisi ou la valeur par défaut
+        """
+        while True:
+            try:
+                valeur = input(prompt).strip()
+                if not valeur and default is not None:
+                    return default
+                if not valeur:
+                    print("Veuillez saisir un nombre.")
+                    continue
+                return float(valeur)
+            except ValueError:
+                print("Erreur : veuillez saisir un nombre valide.")
+    
     def afficher_menu(self):
         """Affiche le menu principal."""
         print("\n" + "=" * 80)
@@ -126,7 +172,7 @@ class MenuPrincipal:
             modele = input("Modèle : ").strip()
             numero_serie = input("Numéro de série : ").strip()
             date_achat_str = input("Date d'achat (YYYY-MM-DD) : ").strip()
-            prix_journalier = float(input("Prix journalier (€) : ").strip())
+            prix_journalier = self._input_float("Prix journalier (€) : ")
             
             date_achat = date.fromisoformat(date_achat_str)
             
@@ -152,7 +198,7 @@ class MenuPrincipal:
     
     def modifier_article(self):
         """Modifie un article existant."""
-        article_id = int(input("\nID de l'article à modifier : ").strip())
+        article_id = self._input_int("\nID de l'article à modifier : ")
         article = ArticleRepository.get_by_id(self.db, article_id)
         
         if not article:
@@ -187,7 +233,7 @@ class MenuPrincipal:
     
     def supprimer_article(self):
         """Supprime un article."""
-        article_id = int(input("\nID de l'article à supprimer : ").strip())
+        article_id = self._input_int("\nID de l'article à supprimer : ")
         
         try:
             if ArticleRepository.delete(self.db, article_id):
@@ -278,7 +324,7 @@ class MenuPrincipal:
         
         try:
             # 1. Sélectionner le client
-            client_id = int(input("ID du client : ").strip())
+            client_id = self._input_int("ID du client : ")
             client = ClientRepository.get_by_id(self.db, client_id)
             
             if not client:
@@ -299,7 +345,20 @@ class MenuPrincipal:
             
             # 3. Sélectionner les articles (panier)
             article_ids_str = input("\nIDs des articles à louer (séparés par des virgules) : ").strip()
-            article_ids = [int(id_str.strip()) for id_str in article_ids_str.split(',')]
+            if not article_ids_str:
+                print("Aucun article sélectionné.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            try:
+                article_ids = [int(id_str.strip()) for id_str in article_ids_str.split(',') if id_str.strip()]
+                if not article_ids:
+                    print("Aucun ID valide saisi.")
+                    input("\nAppuyez sur Entrée pour continuer...")
+                    return
+            except ValueError:
+                print("Erreur : veuillez saisir des nombres séparés par des virgules.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
             
             # 4. Saisir les dates
             date_debut_str = input("Date de début (YYYY-MM-DD) : ").strip()
@@ -351,8 +410,8 @@ class MenuPrincipal:
         print("=" * 80)
         
         try:
-            contrat_id = int(input("ID du contrat : ").strip())
-            article_id = int(input("ID de l'article à restituer : ").strip())
+            contrat_id = self._input_int("ID du contrat : ")
+            article_id = self._input_int("ID de l'article à restituer : ")
             
             succes, message = ServiceTransaction.restituer_article(
                 self.db, contrat_id, article_id

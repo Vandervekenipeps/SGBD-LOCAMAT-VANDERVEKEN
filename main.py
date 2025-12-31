@@ -21,12 +21,12 @@ def main():
     try:
         # Vérifier la connexion à la base de données
         with engine.connect() as connection:
-            print("✓ Connexion à la base de données Neon réussie")
+            print("[OK] Connexion a la base de donnees Neon reussie")
             
             # Afficher les informations de la base de données
             inspector = inspect(engine)
             tables = inspector.get_table_names()
-            print(f"✓ Nombre de tables dans la base : {len(tables)}")
+            print(f"[OK] Nombre de tables dans la base : {len(tables)}")
             if tables:
                 print(f"  Tables existantes : {', '.join(tables)}")
             else:
@@ -35,14 +35,14 @@ def main():
         # Initialiser la base de données (créer les tables si nécessaire)
         init_db()
         
-        print("\n✓ Application prête à être utilisée")
+        print("\n[OK] Application prete a etre utilisee")
         
         # Lancer le menu principal
         menu = MenuPrincipal()
         menu.executer()
         
     except Exception as e:
-        print(f"✗ Erreur lors de l'initialisation : {e}")
+        print(f"[ERREUR] Erreur lors de l'initialisation : {e}")
         print("\nVérifiez que :")
         print("  1. Le fichier .env existe et contient DATABASE_URL")
         print("  2. La connexion à Neon est active")
