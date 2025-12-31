@@ -247,7 +247,22 @@ class MenuPrincipal:
         
         try:
             nouveau_statut_str = input("Nouveau statut (Disponible/Loué/En Maintenance/Rebut) : ").strip()
-            nouveau_statut = StatutArticle(nouveau_statut_str)
+            
+            # Vérifier que le statut n'est pas vide
+            if not nouveau_statut_str:
+                print("❌ Le statut est obligatoire. Veuillez saisir un statut valide.")
+                print("   Statuts possibles : Disponible, Loué, En Maintenance, Rebut")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            # Essayer de convertir en enum
+            try:
+                nouveau_statut = StatutArticle(nouveau_statut_str)
+            except ValueError:
+                print(f"❌ Statut invalide : '{nouveau_statut_str}'")
+                print("   Statuts possibles : Disponible, Loué, En Maintenance, Rebut")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
             
             # Valider le changement de statut (BLL)
             est_valide, message = ServiceValidation.valider_changement_statut(
@@ -261,8 +276,6 @@ class MenuPrincipal:
                 ArticleRepository.update(self.db, article)
                 print("✅ Article modifié avec succès.")
                 
-        except ValueError:
-            print("❌ Statut invalide.")
         except Exception as e:
             print(f"❌ Erreur : {e}")
         
