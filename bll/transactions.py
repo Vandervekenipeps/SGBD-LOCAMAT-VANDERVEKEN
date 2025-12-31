@@ -232,3 +232,4 @@ class ServiceTransaction:
             db.rollback()
             return False, f"Erreur lors de la restitution : {str(e)}"
 
+
