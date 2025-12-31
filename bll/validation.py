@@ -117,6 +117,33 @@ class ServiceValidation:
             return False, "La date de début ne peut pas être dans le passé."
         
         return True, ""
+    
+    @staticmethod
+    def valider_date_achat(date_achat: date) -> Tuple[bool, str]:
+        """
+        Valide la date d'achat d'un article.
+        
+        Règle métier : La date d'achat ne peut pas être dans le futur.
+        Cette validation est effectuée dans la couche BLL en plus de la contrainte
+        SGBD pour garantir la cohérence et fournir un message d'erreur clair.
+        
+        Args:
+            date_achat: Date d'achat à valider
+            
+        Returns:
+            Tuple (est_valide, message_erreur)
+            - est_valide: True si la date est valide
+            - message_erreur: Message d'erreur si non valide, "" sinon
+        """
+        aujourdhui = date.today()
+        
+        if date_achat > aujourdhui:
+            return False, (
+                f"La date d'achat ({date_achat}) ne peut pas être dans le futur. "
+                f"Date maximale autorisée : {aujourdhui}."
+            )
+        
+        return True, ""
 
 
 

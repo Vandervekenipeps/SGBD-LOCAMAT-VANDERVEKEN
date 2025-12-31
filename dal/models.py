@@ -94,11 +94,15 @@ class Article(Base):
     contrats = relationship("ArticleContrat", back_populates="article", 
                           cascade="all, delete-orphan")
     
-    # Contrainte CHECK pour valider le statut
+    # Contraintes CHECK pour valider le statut et la date d'achat
     __table_args__ = (
         CheckConstraint(
             "statut IN ('Disponible', 'Loué', 'En Maintenance', 'Rebut')",
             name='check_statut_article'
+        ),
+        CheckConstraint(
+            "date_achat <= CURRENT_DATE",
+            name='check_date_achat_passee'
         ),
     )
     
