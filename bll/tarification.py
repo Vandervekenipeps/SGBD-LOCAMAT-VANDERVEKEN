@@ -16,7 +16,7 @@ from typing import List
 
 from dal.models import Article, Client, StatutArticle
 from dal.repositories import ClientRepository, ArticleRepository
-from config.database import Session
+from sqlalchemy.orm import Session
 
 
 class ServiceTarification:
@@ -179,4 +179,5 @@ class ServiceTarification:
             'surcharge_retard': surcharge_retard,
             'prix_final': prix_final
         }
+
 
