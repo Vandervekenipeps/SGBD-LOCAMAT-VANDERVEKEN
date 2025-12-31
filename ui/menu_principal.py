@@ -410,8 +410,22 @@ class MenuPrincipal:
         print("=" * 80)
         
         try:
-            # 1. Sélectionner le client
-            client_id = self._input_int("ID du client : ")
+            # 1. Afficher le récapitulatif des clients
+            clients = ClientRepository.get_all(self.db)
+            if not clients:
+                print("\n❌ Aucun client enregistré. Veuillez d'abord créer un client.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            print("\n--- RÉCAPITULATIF DES CLIENTS ---")
+            print("-" * 80)
+            for client in clients:
+                vip_status = "⭐ VIP" if bool(client.est_vip) else ""
+                print(f"  ID: {client.id} - {client.prenom} {client.nom} - Email: {client.email} {vip_status}")
+            
+            # 2. Sélectionner le client
+            print("\n" + "-" * 80)
+            client_id = self._input_int("ID du client : ", allow_empty=True)
             if client_id is None:
                 print("❌ L'ID du client est obligatoire.")
                 input("\nAppuyez sur Entrée pour continuer...")
@@ -423,19 +437,21 @@ class MenuPrincipal:
                 input("\nAppuyez sur Entrée pour continuer...")
                 return
             
-            # 2. Afficher les articles disponibles
+            # 3. Afficher le récapitulatif des articles disponibles
             articles_disponibles = ArticleRepository.get_disponibles(self.db)
             if not articles_disponibles:
-                print("❌ Aucun article disponible pour la location.")
+                print("\n❌ Aucun article disponible pour la location.")
                 input("\nAppuyez sur Entrée pour continuer...")
                 return
             
-            print("\nArticles disponibles :")
+            print("\n--- RÉCAPITULATIF DES ARTICLES DISPONIBLES ---")
+            print("-" * 80)
             for art in articles_disponibles:
-                print(f"  ID: {art.id} - {art.marque} {art.modele} - {art.prix_journalier} €/jour")
+                print(f"  ID: {art.id} - {art.marque} {art.modele} ({art.categorie}) - {art.prix_journalier} €/jour")
             
-            # 3. Sélectionner les articles (panier)
-            article_ids_str = input("\nIDs des articles à louer (séparés par des virgules) : ").strip()
+            # 4. Sélectionner les articles (panier)
+            print("\n" + "-" * 80)
+            article_ids_str = input("IDs des articles à louer (séparés par des virgules) : ").strip()
             if not article_ids_str:
                 print("Aucun article sélectionné.")
                 input("\nAppuyez sur Entrée pour continuer...")
@@ -451,7 +467,7 @@ class MenuPrincipal:
                 input("\nAppuyez sur Entrée pour continuer...")
                 return
             
-            # 4. Saisir les dates avec validation
+            # 5. Saisir les dates avec validation
             date_debut_str = input("Date de début (YYYY-MM-DD) : ").strip()
             if not date_debut_str:
                 print("❌ La date de début est obligatoire. Format attendu : YYYY-MM-DD (ex: 2024-01-15)")
@@ -480,7 +496,7 @@ class MenuPrincipal:
                 input("\nAppuyez sur Entrée pour continuer...")
                 return
             
-            # 5. Calculer le prix (prévisualisation)
+            # 6. Calculer le prix (prévisualisation)
             articles = [ArticleRepository.get_by_id(self.db, aid) for aid in article_ids]
             calcul_prix = ServiceTarification.calculer_prix_final(
                 articles, client, date_debut, date_fin, self.db
@@ -493,14 +509,14 @@ class MenuPrincipal:
             print(f"Surcharge retard : +{calcul_prix['surcharge_retard']:.2f} €")
             print(f"PRIX FINAL : {calcul_prix['prix_final']:.2f} €")
             
-            # 6. Confirmer
+            # 7. Confirmer
             confirmer = input("\nConfirmer la location ? (o/n) : ").strip().lower()
             if confirmer != 'o':
                 print("Location annulée.")
                 input("\nAppuyez sur Entrée pour continuer...")
                 return
             
-            # 7. Valider transactionnellement
+            # 8. Valider transactionnellement
             succes, contrat, message = ServiceTransaction.valider_panier_transactionnel(
                 self.db, client_id, article_ids, date_debut, date_fin
             )
