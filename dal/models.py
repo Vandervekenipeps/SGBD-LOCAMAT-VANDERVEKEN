@@ -79,7 +79,9 @@ class Article(Base):
                        comment="Date d'achat de l'article")
     
     # Statut de l'article
-    statut = Column(SQLEnum(StatutArticle), nullable=False, 
+    # Utilisation de String au lieu de SQLEnum pour compatibilité avec PostgreSQL
+    statut = Column(SQLEnum(StatutArticle, native_enum=False, values_callable=lambda x: [e.value for e in x]), 
+                   nullable=False, 
                    default=StatutArticle.DISPONIBLE,
                    comment="Statut actuel de l'article")
     
@@ -173,7 +175,9 @@ class Contrat(Base):
                        comment="Prix total calculé selon les règles métier")
     
     # Statut du contrat
-    statut = Column(SQLEnum(StatutContrat), nullable=False,
+    # Utilisation de String au lieu de SQLEnum pour compatibilité avec PostgreSQL
+    statut = Column(SQLEnum(StatutContrat, native_enum=False, values_callable=lambda x: [e.value for e in x]), 
+                   nullable=False,
                    default=StatutContrat.EN_ATTENTE,
                    comment="Statut actuel du contrat")
     
