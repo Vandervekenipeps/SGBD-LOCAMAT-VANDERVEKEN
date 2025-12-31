@@ -8,10 +8,10 @@ n'apparaît dans ce code (toutes les opérations passent par la couche BLL).
 
 from sqlalchemy.orm import Session
 from datetime import date, timedelta
-from typing import List
+from typing import List, Optional
 
 from config.database import get_db, SessionLocal
-from dal.models import Article, Client, StatutArticle
+from dal.models import Article, Client, StatutArticle, StatutContrat
 from dal.repositories import ArticleRepository, ClientRepository, ContratRepository
 from bll.transactions import ServiceTransaction
 from bll.validation import ServiceValidation
@@ -28,30 +28,33 @@ class MenuPrincipal:
         """Initialise le menu principal."""
         self.db: Session = SessionLocal()
     
-    def _input_int(self, prompt: str, default: int = None) -> int:
+    def _input_int(self, prompt: str, default: Optional[int] = None, allow_empty: bool = False) -> Optional[int]:
         """
         Demande un entier à l'utilisateur avec gestion des erreurs.
         
         Args:
             prompt: Message à afficher
             default: Valeur par défaut si l'utilisateur appuie sur Entrée
+            allow_empty: Si True, retourne None si l'utilisateur appuie sur Entrée sans valeur
             
         Returns:
-            L'entier saisi ou la valeur par défaut
+            L'entier saisi, la valeur par défaut, ou None si allow_empty=True et valeur vide
         """
         while True:
             try:
                 valeur = input(prompt).strip()
-                if not valeur and default is not None:
-                    return default
                 if not valeur:
-                    print("Veuillez saisir un nombre.")
+                    if default is not None:
+                        return default
+                    if allow_empty:
+                        return None
+                    print("❌ Ce champ est obligatoire. Veuillez saisir un nombre.")
                     continue
                 return int(valeur)
             except ValueError:
-                print("Erreur : veuillez saisir un nombre entier valide.")
+                print("❌ Erreur : veuillez saisir un nombre entier valide.")
     
-    def _input_float(self, prompt: str, default: float = None) -> float:
+    def _input_float(self, prompt: str, default: Optional[float] = None) -> float:
         """
         Demande un nombre décimal à l'utilisateur avec gestion des erreurs.
         
@@ -234,8 +237,14 @@ class MenuPrincipal:
         input("\nAppuyez sur Entrée pour continuer...")
     
     def modifier_article(self):
-        """Modifie un article existant."""
-        article_id = self._input_int("\nID de l'article à modifier : ")
+        """Modifie un article existant (statut uniquement)."""
+        article_id = self._input_int("\nID de l'article à modifier : ", allow_empty=True)
+        
+        if article_id is None:
+            print("❌ L'ID de l'article est obligatoire.")
+            input("\nAppuyez sur Entrée pour continuer...")
+            return
+        
         article = ArticleRepository.get_by_id(self.db, article_id)
         
         if not article:
@@ -272,7 +281,8 @@ class MenuPrincipal:
             if not est_valide:
                 print(f"❌ {message}")
             else:
-                article.statut = nouveau_statut
+                # Assignation du statut (SQLAlchemy gère la conversion enum)
+                article.statut = nouveau_statut  # type: ignore[assignment]
                 ArticleRepository.update(self.db, article)
                 print("✅ Article modifié avec succès.")
                 
@@ -283,7 +293,12 @@ class MenuPrincipal:
     
     def supprimer_article(self):
         """Supprime un article."""
-        article_id = self._input_int("\nID de l'article à supprimer : ")
+        article_id = self._input_int("\nID de l'article à supprimer : ", allow_empty=True)
+        
+        if article_id is None:
+            print("❌ L'ID de l'article est obligatoire.")
+            input("\nAppuyez sur Entrée pour continuer...")
+            return
         
         try:
             if ArticleRepository.delete(self.db, article_id):
@@ -329,7 +344,7 @@ class MenuPrincipal:
         print("LISTE DES CLIENTS")
         print("-" * 80)
         for client in clients:
-            vip_status = "⭐ VIP" if client.est_vip else ""
+            vip_status = "⭐ VIP" if bool(client.est_vip) else ""
             print(
                 f"ID: {client.id} | {client.prenom} {client.nom} | "
                 f"Email: {client.email} {vip_status}"
@@ -397,6 +412,10 @@ class MenuPrincipal:
         try:
             # 1. Sélectionner le client
             client_id = self._input_int("ID du client : ")
+            if client_id is None:
+                print("❌ L'ID du client est obligatoire.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
             client = ClientRepository.get_by_id(self.db, client_id)
             
             if not client:
@@ -505,9 +524,77 @@ class MenuPrincipal:
         print("=" * 80)
         
         try:
-            contrat_id = self._input_int("ID du contrat : ")
-            article_id = self._input_int("ID de l'article à restituer : ")
+            # 1. Afficher les contrats en cours
+            contrats_en_cours = ContratRepository.get_en_cours(self.db)
             
+            if not contrats_en_cours:
+                print("\n❌ Aucun contrat en cours. Aucun article à restituer.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            print("\n--- CONTRATS EN COURS ---")
+            print("-" * 80)
+            for contrat in contrats_en_cours:
+                # SQLAlchemy retourne déjà des entiers, pas des colonnes
+                client = ClientRepository.get_by_id(self.db, contrat.client_id)  # type: ignore[arg-type]
+                client_nom = f"{client.prenom} {client.nom}" if client else f"Client ID:{contrat.client_id}"
+                articles = ContratRepository.get_articles_du_contrat(self.db, contrat.id)  # type: ignore[arg-type]
+                articles_str = ", ".join([f"{a.marque} {a.modele} (ID:{a.id})" for a in articles])
+                
+                print(f"\nContrat ID: {contrat.id}")
+                print(f"  Client: {client_nom}")
+                print(f"  Dates: {contrat.date_debut} → {contrat.date_fin}")
+                print(f"  Statut: {contrat.statut.value}")
+                print(f"  Articles: {articles_str}")
+            
+            # 2. Demander l'ID du contrat
+            print("\n" + "-" * 80)
+            contrat_id = self._input_int("\nID du contrat : ", allow_empty=True)
+            if contrat_id is None:
+                print("❌ L'ID du contrat est obligatoire.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            # Vérifier que le contrat existe et est en cours
+            contrat = ContratRepository.get_by_id(self.db, contrat_id)
+            if not contrat:
+                print(f"❌ Contrat {contrat_id} introuvable.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            if contrat.statut not in [StatutContrat.EN_ATTENTE, StatutContrat.EN_COURS]:
+                print(f"❌ Le contrat {contrat_id} n'est pas en cours (statut: {contrat.statut.value}).")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            # 3. Afficher les articles du contrat
+            articles = ContratRepository.get_articles_du_contrat(self.db, contrat_id)
+            if not articles:
+                print(f"❌ Aucun article trouvé pour le contrat {contrat_id}.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            print("\n--- ARTICLES DU CONTRAT ---")
+            print("-" * 80)
+            for article in articles:
+                print(f"  ID: {article.id} - {article.marque} {article.modele} - Statut: {article.statut.value}")
+            
+            # 4. Demander l'ID de l'article à restituer
+            print("\n" + "-" * 80)
+            article_id = self._input_int("ID de l'article à restituer : ", allow_empty=True)
+            if article_id is None:
+                print("❌ L'ID de l'article est obligatoire.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            # Vérifier que l'article appartient au contrat
+            article_ids_contrat = [a.id for a in articles]
+            if article_id not in article_ids_contrat:
+                print(f"❌ L'article {article_id} n'appartient pas au contrat {contrat_id}.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            # 5. Restituer l'article
             succes, message = ServiceTransaction.restituer_article(
                 self.db, contrat_id, article_id
             )

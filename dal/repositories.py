@@ -189,6 +189,13 @@ class ContratRepository:
         return db.query(Contrat).all()
     
     @staticmethod
+    def get_en_cours(db: Session) -> List[Contrat]:
+        """Récupère tous les contrats en cours (non terminés, non annulés)."""
+        return db.query(Contrat).filter(
+            Contrat.statut.in_([StatutContrat.EN_ATTENTE, StatutContrat.EN_COURS])
+        ).all()
+    
+    @staticmethod
     def get_articles_du_contrat(db: Session, contrat_id: int) -> List[Article]:
         """
         Récupère tous les articles associés à un contrat.
