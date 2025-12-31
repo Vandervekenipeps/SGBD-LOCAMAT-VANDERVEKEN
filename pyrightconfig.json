@@ -1,0 +1,24 @@
+{
+    "include": [
+        "."
+    ],
+    "exclude": [
+        "**/__pycache__",
+        "**/venv",
+        "**/.venv"
+    ],
+    "pythonVersion": "3.11",
+    "pythonPlatform": "Windows",
+    "typeCheckingMode": "basic",
+    "executionEnvironments": [
+        {
+            "root": ".",
+            "pythonVersion": "3.11",
+            "pythonPlatform": "Windows",
+            "extraPaths": [
+                "C:\\Users\\louis\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\site-packages"
+            ]
+        }
+    ]
+}
+
