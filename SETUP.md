@@ -22,13 +22,33 @@ pip install -r requirements.txt
 
 ## Étape 3 : Configurer la connexion à la base de données
 
-1. Créer un fichier `.env` à la racine du projet
-2. Copier le contenu de `env.example.txt` dans `.env`
-3. Remplacer `VOTRE_MOT_DE_PASSE` par votre vrai mot de passe Neon
+1. **Créer un fichier `.env` à la racine du projet** (à la même place que `main.py`)
+2. **Ajouter votre URL de connexion Neon** dans ce fichier :
 
-**IMPORTANT** : Le fichier `.env` est dans `.gitignore` et ne sera jamais commité dans Git.
+```
+DATABASE_URL=postgresql://neondb_owner:VOTRE_MOT_DE_PASSE@ep-curly-fire-agsyh90f-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+```
 
-## Étape 4 : Vérifier la connexion
+3. **Remplacer `VOTRE_MOT_DE_PASSE`** par votre vrai mot de passe Neon (celui que vous avez dans votre dashboard Neon)
+
+**IMPORTANT** : 
+- Le fichier `.env` est dans `.gitignore` et ne sera jamais commité dans Git
+- Ne partagez JAMAIS ce fichier ou votre mot de passe
+
+## Étape 4 : Créer les tables dans Neon
+
+Une fois le fichier `.env` créé, initialisez la base de données :
+
+```bash
+python init_database.py
+```
+
+Ce script va :
+- Vérifier la connexion à Neon
+- Créer toutes les tables nécessaires (articles, clients, contrats, articles_contrats)
+- Afficher la structure des tables créées
+
+## Étape 5 : Lancer l'application
 
 ```bash
 python main.py
@@ -36,7 +56,8 @@ python main.py
 
 Si tout fonctionne, vous devriez voir :
 - ✓ Connexion à la base de données Neon réussie
-- ✓ Nombre de tables dans la base : 0 (pour l'instant)
+- ✓ Nombre de tables dans la base : 4
+- Le menu principal de l'application
 
 ## Prochaines étapes
 

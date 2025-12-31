@@ -52,3 +52,4 @@ Le projet suit une architecture 3-tier (trois couches) :
 
 ⚠️ **IMPORTANT** : Ne jamais committer le fichier `.env` contenant les mots de passe réels dans Git.
 
+

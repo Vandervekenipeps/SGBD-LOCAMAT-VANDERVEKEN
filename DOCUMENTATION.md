@@ -203,3 +203,4 @@ Exemples de modifications faciles :
 ✅ CI/CD : Pipeline GitHub Actions configuré  
 ✅ Documentation : Ce fichier + README.md + SETUP.md
 
+
