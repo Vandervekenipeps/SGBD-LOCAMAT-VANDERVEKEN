@@ -8,6 +8,26 @@ Ce script teste toutes les fonctionnalités principales :
 - Transactions ACID
 - Calcul tarifaire
 - Requêtes d'agrégation
+
+UTILISATION DES BREAKPOINTS :
+Ce script contient des breakpoints stratégiques pour le débogage.
+Pour utiliser les breakpoints :
+1. Exécuter le script : python tests/test_application.py
+2. Quand un breakpoint est atteint, le débogueur s'arrête
+3. Utiliser les commandes du débogueur :
+   - 'n' (next) : ligne suivante
+   - 's' (step) : entrer dans une fonction
+   - 'c' (continue) : continuer jusqu'au prochain breakpoint
+   - 'p variable' : afficher la valeur d'une variable
+   - 'pp variable' : afficher joliment une variable
+   - 'l' (list) : afficher le code autour de la ligne actuelle
+   - 'q' (quit) : quitter le débogueur
+
+Pour activer les breakpoints (mode débogage) :
+- Windows PowerShell: $env:DEBUG_MODE="True"; python tests/test_application.py
+- Windows CMD: set DEBUG_MODE=True && python tests/test_application.py
+
+Par défaut, les breakpoints sont désactivés pour permettre l'exécution normale des tests.
 """
 
 import sys
@@ -28,6 +48,16 @@ from bll.tarification import ServiceTarification
 from bll.transactions import ServiceTransaction
 from bll.validation import ServiceValidation
 
+# Variable globale pour activer/désactiver les breakpoints
+# Utiliser: DEBUG_MODE=True python tests/test_application.py
+# Ou définir la variable d'environnement: set DEBUG_MODE=True
+DEBUG_MODE = os.getenv("DEBUG_MODE", "False").lower() == "true"
+
+def debug_breakpoint(*args):
+    """Breakpoint conditionnel basé sur DEBUG_MODE."""
+    if DEBUG_MODE:
+        breakpoint()  # type: ignore[call-arg]
+
 
 class TestsApplication:
     """Classe pour exécuter tous les tests de l'application."""
@@ -46,9 +76,12 @@ class TestsApplication:
         try:
             with engine.connect() as conn:
                 result = conn.execute(text("SELECT version()"))
-                version = result.fetchone()[0]
+                row = result.fetchone()
+                version = row[0] if row else "Version inconnue"  # type: ignore[index]
                 print(f"[OK] Connexion reussie")
                 print(f"     PostgreSQL: {version[:50]}...")
+                # BREAKPOINT : Inspecter la connexion et la version
+                debug_breakpoint()  # Inspecter: conn, version
                 self.succes.append("Connexion DB")
         except Exception as e:
             print(f"[ERREUR] Echec de connexion : {e}")
@@ -70,6 +103,8 @@ class TestsApplication:
             )
             ClientRepository.create(self.db, client1)
             print("   [OK] Premier client cree")
+            # BREAKPOINT : Inspecter le client créé avant test de contrainte UNIQUE
+            debug_breakpoint()  # Inspecter: client1, email_unique
             
             # Essayer de créer un deuxième client avec le même email
             client2 = Client(
@@ -118,11 +153,11 @@ class TestsApplication:
                 prix_total=Decimal('70.00'), statut=StatutContrat.EN_COURS
             )
             # Forcer la valeur du statut pour correspondre à la contrainte CHECK
-            contrat.statut = StatutContrat.EN_COURS
+            contrat.statut = StatutContrat.EN_COURS  # type: ignore[assignment]
             contrat = ContratRepository.create(self.db, contrat)
             
             # Lier l'article au contrat
-            ContratRepository.ajouter_article(self.db, contrat.id, article.id)
+            ContratRepository.ajouter_article(self.db, contrat.id, article.id)  # type: ignore[arg-type]
             self.db.commit()  # S'assurer que la liaison est commitée
             
             # Vérifier que la liaison existe vraiment dans la base
@@ -139,6 +174,8 @@ class TestsApplication:
                 return
             
             print(f"   [OK] Liaison creee (Article {article.id} <-> Contrat {contrat.id})")
+            # BREAKPOINT : Inspecter la liaison avant test de contrainte RESTRICT
+            debug_breakpoint()  # Inspecter: article, contrat, liaison
             
             # Essayer de supprimer l'article (doit échouer avec RESTRICT)
             # Utiliser une requête SQL directe pour tester la contrainte au niveau SGBD
@@ -195,6 +232,8 @@ class TestsApplication:
             )
             article = ArticleRepository.create(self.db, article)
             print(f"\n3.1 Article cree avec statut 'En Maintenance' (ID: {article.id})")
+            # BREAKPOINT : Inspecter l'article avant test du trigger
+            debug_breakpoint()  # Inspecter: article, article.statut
             
             # Essayer de passer directement à "Loué" (doit échouer avec le trigger)
             try:
@@ -217,11 +256,11 @@ class TestsApplication:
             
             # Test du passage correct : Maintenance -> Disponible -> Loué
             print("\n3.2 Test passage correct Maintenance -> Disponible -> Loue...")
-            article.statut = StatutArticle.DISPONIBLE
+            article.statut = StatutArticle.DISPONIBLE  # type: ignore[assignment]
             ArticleRepository.update(self.db, article)
             print("   [OK] Statut change a 'Disponible'")
             
-            article.statut = StatutArticle.LOUE
+            article.statut = StatutArticle.LOUE  # type: ignore[assignment]
             ArticleRepository.update(self.db, article)
             print("   [OK] Statut change a 'Loue' (depuis 'Disponible')")
             self.succes.append("Changement statut correct")
@@ -270,6 +309,8 @@ class TestsApplication:
             prix_base = ServiceTarification.calculer_prix_base(articles, date_debut, date_fin)
             prix_attendu = Decimal('50.00') * Decimal('8')  # (20+30) * 8 = 400
             print(f"\n4.1 Prix de base : {prix_base} € (attendu: {prix_attendu} €)")
+            # BREAKPOINT : Inspecter le calcul tarifaire
+            debug_breakpoint()  # Inspecter: articles, date_debut, date_fin, prix_base, prix_attendu
             if prix_base == prix_attendu:
                 print("   [OK] Calcul prix de base correct")
                 self.succes.append("Calcul prix base")
@@ -306,6 +347,8 @@ class TestsApplication:
             prix_final_attendu = prix_base - remise_duree - remise_vip  # 400 - 40 - 60 = 300
             print(f"\n4.4 Prix final : {calcul['prix_final']} € (attendu: {prix_final_attendu} €)")
             print(f"     Detail: {prix_base} - {remise_duree} - {remise_vip} = {calcul['prix_final']}")
+            # BREAKPOINT : Inspecter le calcul final complet
+            debug_breakpoint()  # Inspecter: calcul, prix_base, remise_duree, remise_vip, prix_final_attendu
             if calcul['prix_final'] == prix_final_attendu:
                 print("   [OK] Calcul prix final correct")
                 self.succes.append("Calcul prix final")
@@ -358,17 +401,21 @@ class TestsApplication:
             date_fin = date.today() + timedelta(days=3)
             
             succes, contrat, message = ServiceTransaction.valider_panier_transactionnel(
-                self.db, client.id, [article1.id, article2.id], date_debut, date_fin
+                self.db, client.id, [article1.id, article2.id], date_debut, date_fin  # type: ignore[arg-type]
             )
+            # BREAKPOINT : Inspecter le résultat de la transaction ACID
+            debug_breakpoint()  # Inspecter: succes, contrat, message, client, article1, article2
             
             if succes and contrat:
                 print(f"   [OK] Transaction reussie (Contrat ID: {contrat.id})")
                 print(f"        Message: {message}")
                 
                 # Vérifier que les articles sont bien passés à "Loué"
-                article1 = ArticleRepository.get_by_id(self.db, article1.id)
-                article2 = ArticleRepository.get_by_id(self.db, article2.id)
-                if article1.statut == StatutArticle.LOUE and article2.statut == StatutArticle.LOUE:
+                article1 = ArticleRepository.get_by_id(self.db, article1.id)  # type: ignore[arg-type]
+                article2 = ArticleRepository.get_by_id(self.db, article2.id)  # type: ignore[arg-type]
+                # BREAKPOINT : Inspecter les statuts des articles après transaction
+                debug_breakpoint()  # Inspecter: article1.statut, article2.statut, contrat
+                if article1 and article2 and article1.statut == StatutArticle.LOUE and article2.statut == StatutArticle.LOUE:  # type: ignore[comparison-overlap]
                     print("   [OK] Statuts des articles mis a jour correctement")
                     self.succes.append("Transaction ACID")
                 else:
@@ -402,6 +449,8 @@ class TestsApplication:
             print("\n6.1 Test CA des 30 derniers jours...")
             ca = ContratRepository.get_ca_30_jours(self.db)
             print(f"   CA total : {float(ca):.2f} €")
+            # BREAKPOINT : Inspecter le résultat de l'agrégation CA
+            debug_breakpoint()  # Inspecter: ca, self.db
             print("   [OK] Requete d'agregation executee sans erreur")
             self.succes.append("Requete CA 30 jours")
             
@@ -409,6 +458,8 @@ class TestsApplication:
             print("\n6.2 Test Top 5 materiaels rentables...")
             top_5 = ContratRepository.get_top_5_rentables(self.db)
             print(f"   Nombre de resultats : {len(top_5)}")
+            # BREAKPOINT : Inspecter le résultat de l'agrégation Top 5
+            debug_breakpoint()  # Inspecter: top_5, len(top_5)
             if isinstance(top_5, list):
                 print("   [OK] Requete d'agregation executee sans erreur")
                 self.succes.append("Requete Top 5")
