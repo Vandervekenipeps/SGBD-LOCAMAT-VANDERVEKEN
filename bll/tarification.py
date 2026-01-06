@@ -93,7 +93,7 @@ class ServiceTarification:
         Returns:
             Montant de la remise en euros
         """
-        if client.est_vip:
+        if bool(client.est_vip):  # type: ignore[comparison-overlap]
             # Remise de 15%
             remise = prix_base * Decimal('0.15')
             return remise
@@ -163,7 +163,7 @@ class ServiceTarification:
         remise_vip = ServiceTarification.calculer_remise_vip(prix_base, client)
         
         # 3. Calculer la surcharge
-        surcharge_retard = ServiceTarification.calculer_surcharge_retard(prix_base, db, client.id)
+        surcharge_retard = ServiceTarification.calculer_surcharge_retard(prix_base, db, client.id)  # type: ignore[arg-type]
         
         # 4. Calculer le prix final
         prix_final = prix_base - remise_duree - remise_vip + surcharge_retard
