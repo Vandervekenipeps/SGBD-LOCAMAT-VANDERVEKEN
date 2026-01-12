@@ -37,19 +37,25 @@ jobs:
         pytest tests/ -v --cov=. --cov-report=xml
       continue-on-error: true
       env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        DATABASE_URL: ${{ secrets.DATABASE_URL || '' }}
     
     - name: Test application (test_application.py)
       run: |
         python tests/test_application.py
       continue-on-error: true
       env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        DATABASE_URL: ${{ secrets.DATABASE_URL || '' }}
         DEBUG_MODE: "False"
         
     - name: Build check
       run: |
         python -c "import sqlalchemy; print('SQLAlchemy import OK')"
-        python -c "from config.database import engine; print('Database config OK')"
+        if [ -z "$DATABASE_URL" ]; then
+          echo "⚠️ DATABASE_URL non configuré - Build check ignoré"
+        else
+          python -c "from config.database import engine; print('Database config OK')"
+        fi
       continue-on-error: true
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL || '' }}
 
