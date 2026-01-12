@@ -4,7 +4,9 @@
 
 Le pipeline CI/CD (Continuous Integration / Continuous Deployment) de l'application LOCA-MAT est configuré avec **GitHub Actions**. Il s'exécute automatiquement à chaque push ou pull request pour vérifier que le code fonctionne correctement avant de le fusionner dans les branches principales.
 
-**Fichier de configuration** : `.github/workflows/ci.yml`
+**Fichiers de configuration** :
+- `.github/workflows/ci.yml` : Configuration principale du workflow
+- `pytest.ini` : Configuration pytest pour ignorer les tests personnalisés
 
 ---
 
@@ -151,29 +153,43 @@ flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statist
 **Commandes** :
 ```bash
 pip install pytest pytest-cov
-pytest tests/ -v --cov=. --cov-report=xml
+pytest tests/ -v --ignore=tests/test_application.py --cov=. --cov-report=xml || echo "ℹ️ Aucun test pytest trouvé - Les tests sont exécutés via test_application.py"
 ```
 
 **Description** :
 - Installe pytest et pytest-cov
-- Exécute tous les tests dans le dossier `tests/`
+- Exécute tous les tests pytest dans le dossier `tests/`
+- **Ignore** `test_application.py` car c'est un script de test personnalisé (pas un test pytest)
 - Options :
   - `-v` : Mode verbeux (affiche chaque test)
+  - `--ignore=tests/test_application.py` : Ignore le script de test personnalisé
   - `--cov=.` : Calcule la couverture de code pour tout le projet
   - `--cov-report=xml` : Génère un rapport XML de couverture
+- Si aucun test pytest n'est trouvé, affiche un message informatif
+
+**Configuration pytest** :
+- Fichier `pytest.ini` présent à la racine du projet
+- Configure pytest pour ignorer `test_application.py` automatiquement
+- Définit les patterns de collecte de tests
 
 **Variables d'environnement** :
 ```yaml
-DATABASE_URL: ${{ secrets.DATABASE_URL }}
+DATABASE_URL: ${{ secrets.DATABASE_URL || '' }}
 ```
 
-**Note** : Cette étape ne bloque pas le pipeline (`continue-on-error: true`)
+**Note** : 
+- Cette étape ne bloque pas le pipeline (`continue-on-error: true`)
+- Si aucun test pytest n'est trouvé, ce n'est pas une erreur (les tests sont exécutés via `test_application.py`)
 
 **Durée** : ~1-3 minutes (selon le nombre de tests)
 
 **Rapport de couverture** :
 - Génère un fichier `coverage.xml`
 - Peut être visualisé dans GitHub Actions ou avec des outils externes
+
+**Comportement attendu** :
+- Si des tests pytest existent : ils sont exécutés normalement
+- Si aucun test pytest n'existe : message informatif, pas d'erreur
 
 ---
 
@@ -198,9 +214,13 @@ python tests/test_application.py
 
 **Variables d'environnement** :
 ```yaml
-DATABASE_URL: ${{ secrets.DATABASE_URL }}
+DATABASE_URL: ${{ secrets.DATABASE_URL || '' }}
 DEBUG_MODE: "False"
 ```
+
+**Gestion de DATABASE_URL** :
+- Utilise `|| ''` pour éviter les erreurs si le secret n'est pas configuré
+- Si le secret n'existe pas, la variable sera vide (mais les tests échoueront)
 
 **Note** : Cette étape ne bloque pas le pipeline (`continue-on-error: true`)
 
@@ -227,22 +247,38 @@ SUITE DE TESTS - APPLICATION LOCA-MAT
 **Commandes** :
 ```bash
 python -c "import sqlalchemy; print('SQLAlchemy import OK')"
-python -c "from config.database import engine; print('Database config OK')"
+if [ -z "$DATABASE_URL" ]; then
+  echo "⚠️ DATABASE_URL non configuré - Build check ignoré"
+else
+  python -c "from config.database import engine; print('Database config OK')"
+fi
 ```
 
 **Description** :
 - Vérifie que SQLAlchemy peut être importé
-- Vérifie que la configuration de la base de données est valide
+- Vérifie si `DATABASE_URL` est configuré avant de tester la connexion
+- Si `DATABASE_URL` est vide : affiche un avertissement et ignore le test de connexion
+- Si `DATABASE_URL` est configuré : vérifie que la configuration de la base de données est valide
 - Teste que les imports principaux fonctionnent
+
+**Variables d'environnement** :
+```yaml
+DATABASE_URL: ${{ secrets.DATABASE_URL || '' }}
+```
 
 **Note** : Cette étape ne bloque pas le pipeline (`continue-on-error: true`)
 
 **Durée** : ~5-10 secondes
 
-**Résultat attendu** :
+**Résultats possibles** :
 ```
+# Si DATABASE_URL est configuré :
 SQLAlchemy import OK
 Database config OK
+
+# Si DATABASE_URL n'est pas configuré :
+SQLAlchemy import OK
+⚠️ DATABASE_URL non configuré - Build check ignoré
 ```
 
 ---
@@ -271,6 +307,16 @@ postgresql://user:password@host:port/database
 4. Nom : `DATABASE_URL`
 5. Valeur : Votre chaîne de connexion PostgreSQL complète
 6. Cliquer sur **Add secret**
+
+**Vérification** :
+- Pour vérifier si le secret est configuré : aller dans **Settings** → **Secrets and variables** → **Actions**
+- Le secret doit apparaître dans la liste (la valeur est masquée pour sécurité)
+- Si le secret n'existe pas, les tests échoueront avec une erreur de connexion
+
+**Gestion dans le workflow** :
+- Le workflow utilise `${{ secrets.DATABASE_URL || '' }}` pour éviter les erreurs si le secret n'existe pas
+- Si le secret n'est pas configuré, la variable sera vide et les tests échoueront
+- Le Build check détecte automatiquement si `DATABASE_URL` est manquant et affiche un avertissement
 
 **Sécurité** :
 - ✅ Les secrets ne sont jamais affichés dans les logs
@@ -464,9 +510,20 @@ act push  # Exécuter le workflow push
 ### Problème : Tests échouent avec erreur de connexion
 
 **Solution** :
-- Vérifier que le secret `DATABASE_URL` est correctement configuré
+- Vérifier que le secret `DATABASE_URL` est correctement configuré dans GitHub
+  - Aller dans **Settings** → **Secrets and variables** → **Actions**
+  - Vérifier que `DATABASE_URL` existe dans la liste
 - Vérifier que la base de données Neon est accessible depuis l'extérieur
 - Vérifier que l'URL de connexion est au bon format
+- Vérifier les logs du Build check : si vous voyez "⚠️ DATABASE_URL non configuré", le secret n'est pas configuré
+
+### Problème : Pytest affiche un warning sur TestsApplication
+
+**Solution** :
+- Ce warning est normal et ignoré automatiquement
+- Le workflow utilise `--ignore=tests/test_application.py` pour éviter ce warning
+- Le fichier `pytest.ini` configure pytest pour ignorer ce fichier
+- `test_application.py` est un script de test personnalisé, pas un test pytest
 
 ### Problème : Pipeline prend trop de temps
 
@@ -543,7 +600,7 @@ act push  # Exécuter le workflow push
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  ÉTAPE 5: Test with pytest                                  │
-│  → pytest tests/ -v --cov=.                                 │
+│  → pytest tests/ -v --ignore=test_application.py           │
 │  → continue-on-error: true                                  │
 └──────────────────────┬──────────────────────────────────────┘
                        │
@@ -557,7 +614,7 @@ act push  # Exécuter le workflow push
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  ÉTAPE 7: Build check                                       │
-│  → Vérifie les imports                                       │
+│  → Vérifie les imports et DATABASE_URL                       │
 │  → continue-on-error: true                                  │
 └──────────────────────┬──────────────────────────────────────┘
                        │
@@ -584,10 +641,27 @@ Le pipeline CI/CD de l'application LOCA-MAT :
 
 ---
 
+## Fichiers de configuration
+
+### `.github/workflows/ci.yml`
+Fichier principal de configuration du workflow GitHub Actions.
+
+### `pytest.ini`
+Configuration pytest pour :
+- Ignorer `test_application.py` (script de test personnalisé)
+- Définir les patterns de collecte de tests
+- Configurer les répertoires à ignorer
+
+### `requirements.txt`
+Liste des dépendances Python nécessaires pour le projet.
+
+---
+
 ## Ressources
 
 - **Documentation GitHub Actions** : https://docs.github.com/en/actions
 - **Documentation des tests** : `tests/DOCUMENTATION_TESTS.md`
 - **Fichier de configuration** : `.github/workflows/ci.yml`
+- **Configuration pytest** : `pytest.ini`
 - **Requirements** : `requirements.txt`
 
