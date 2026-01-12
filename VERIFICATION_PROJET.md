@@ -257,8 +257,3 @@
 ## RÉSULTAT
 
 **✅ PROJET 100% CONFORME AUX CONSIGNES**
-
-Tous les critères de la grille de cotation sont respectés. Le projet est prêt pour :
-1. La défense orale
-2. L'ajout d'une interface graphique (l'architecture actuelle le permet)
-

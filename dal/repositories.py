@@ -199,9 +199,11 @@ class ClientRepository:
             )
         ).order_by(desc(Contrat.date_retour_reelle)).first()
         
-        if dernier_contrat and dernier_contrat.date_retour_reelle:
+        if dernier_contrat is not None and dernier_contrat.date_retour_reelle is not None:  # type: ignore[comparison-overlap]
             # Vérifie si la date de retour réelle est après la date de fin prévue
-            return dernier_contrat.date_retour_reelle > dernier_contrat.date_fin
+            date_retour = dernier_contrat.date_retour_reelle
+            date_fin = dernier_contrat.date_fin
+            return bool(date_retour > date_fin)  # type: ignore[comparison-overlap]
         
         return False
 

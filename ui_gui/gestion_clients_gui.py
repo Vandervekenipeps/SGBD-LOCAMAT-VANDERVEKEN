@@ -119,7 +119,7 @@ class FenetreGestionClients:
         
         # Récupérer l'ID du client sélectionné
         item = self.tree.item(selection[0])
-        client_id = item['values'][0]
+        client_id = int(item['values'][0])  # Convertir en int
         
         # Récupérer les informations du client pour la confirmation
         client = ClientRepository.get_by_id(self.db, client_id)
@@ -139,7 +139,7 @@ class FenetreGestionClients:
             return
         
         # Supprimer le client
-        succes, message = ClientRepository.delete(self.db, client_id)
+        succes, message = ClientRepository.delete(self.db, client_id)  # client_id est déjà un int
         
         if succes:
             messagebox.showinfo("Succès", message)
