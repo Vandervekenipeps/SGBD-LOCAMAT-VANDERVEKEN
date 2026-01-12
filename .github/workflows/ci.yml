@@ -34,8 +34,9 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest pytest-cov
-        # Exécuter pytest, mais ignorer l'erreur si aucun test n'est trouvé
-        pytest tests/ -v --cov=. --cov-report=xml || echo "⚠️ Aucun test pytest trouvé - Les tests sont exécutés via test_application.py"
+        # Exécuter pytest en ignorant test_application.py (script personnalisé)
+        # Si aucun test pytest n'est trouvé, afficher un message informatif
+        pytest tests/ -v --ignore=tests/test_application.py --cov=. --cov-report=xml || echo "ℹ️ Aucun test pytest trouvé - Les tests sont exécutés via test_application.py"
       continue-on-error: true
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL || '' }}
