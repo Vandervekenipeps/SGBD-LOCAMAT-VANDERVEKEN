@@ -164,7 +164,7 @@ class FenetreRestitution:
             return
         
         item = self.tree_contrats.item(selection[0])
-        contrat_id = item['values'][0]
+        contrat_id = int(item['values'][0])
         
         self.contrat_selectionne = contrat_id
         self._charger_articles_contrat(contrat_id)
@@ -196,7 +196,7 @@ class FenetreRestitution:
             return
         
         item = self.tree_articles.item(selection[0])
-        self.article_selectionne = item['values'][0]
+        self.article_selectionne = int(item['values'][0])
     
     def _restituer(self):
         """Restitue l'article sélectionné."""
@@ -212,14 +212,14 @@ class FenetreRestitution:
             return
         
         succes, message = ServiceTransaction.restituer_article(
-            self.db, self.contrat_selectionne, self.article_selectionne
+            self.db, int(self.contrat_selectionne), int(self.article_selectionne)
         )
         
         if succes:
             messagebox.showinfo("Succès", message)
             self._charger_contrats()
             if self.contrat_selectionne:
-                self._charger_articles_contrat(self.contrat_selectionne)
+                self._charger_articles_contrat(int(self.contrat_selectionne))
         else:
             messagebox.showerror("Erreur", message)
 

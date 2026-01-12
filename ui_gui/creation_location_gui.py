@@ -219,7 +219,7 @@ class FenetreCreationLocation:
             return
         
         item = self.tree_articles.item(selection[0])
-        article_id = item['values'][0]
+        article_id = int(item['values'][0])
         
         article = ArticleRepository.get_by_id(self.db, article_id)
         if not article:
@@ -242,7 +242,7 @@ class FenetreCreationLocation:
             return
         
         item = self.tree_clients.item(selection[0])
-        self.client_selectionne = item['values'][0]
+        self.client_selectionne = int(item['values'][0])
         client_nom = f"{item['values'][1]} {item['values'][2]}"
         self.label_client.config(text=f"Client sélectionné: {client_nom} (ID: {self.client_selectionne})")
     
@@ -271,7 +271,7 @@ class FenetreCreationLocation:
             messagebox.showerror("Erreur", "Format de date invalide. Utilisez YYYY-MM-DD")
             return
         
-        client = ClientRepository.get_by_id(self.db, self.client_selectionne)
+        client = ClientRepository.get_by_id(self.db, int(self.client_selectionne))
         calcul = ServiceTarification.calculer_prix_final(
             self.articles_selectionnes, client, date_debut, date_fin, self.db
         )
@@ -315,10 +315,10 @@ class FenetreCreationLocation:
         article_ids = [a.id for a in self.articles_selectionnes]
         
         succes, contrat, message = ServiceTransaction.valider_panier_transactionnel(
-            self.db, self.client_selectionne, article_ids, date_debut, date_fin
+            self.db, int(self.client_selectionne), article_ids, date_debut, date_fin
         )
         
-        if succes:
+        if succes and contrat:
             messagebox.showinfo("Succès", f"{message}\n\nContrat créé avec succès (ID: {contrat.id})")
             self.window.destroy()
         else:
