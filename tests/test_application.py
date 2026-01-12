@@ -39,7 +39,6 @@ from sqlalchemy.orm import Session
 from datetime import date, timedelta
 from decimal import Decimal
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import text
 
 from config.database import SessionLocal, engine
 from dal.models import Article, Client, Contrat, ArticleContrat, StatutArticle, StatutContrat
@@ -75,11 +74,14 @@ class TestsApplication:
         print("=" * 80)
         try:
             with engine.connect() as conn:
-                result = conn.execute(text("SELECT version()"))
-                row = result.fetchone()
-                version = row[0] if row else "Version inconnue"  # type: ignore[index]
+                # Vérifier la connexion en testant une requête simple via ORM
+                # On utilise une requête sur les tables système pour éviter le SQL brut
+                from sqlalchemy import inspect
+                inspector = inspect(engine)
+                tables = inspector.get_table_names()
+                version_info = f"PostgreSQL (tables: {len(tables)})"
                 print(f"[OK] Connexion reussie")
-                print(f"     PostgreSQL: {version[:50]}...")
+                print(f"     {version_info}")
                 # BREAKPOINT : Inspecter la connexion et la version
                 debug_breakpoint()  # Inspecter: conn, version
                 self.succes.append("Connexion DB")
@@ -178,17 +180,25 @@ class TestsApplication:
             debug_breakpoint()  # Inspecter: article, contrat, liaison
             
             # Essayer de supprimer l'article (doit échouer avec RESTRICT)
-            # Utiliser une requête SQL directe pour tester la contrainte au niveau SGBD
+            # Utiliser query().delete() pour contourner le cascade ORM et tester la contrainte RESTRICT
             try:
-                from sqlalchemy import text
-                # Tentative de suppression via SQL direct pour déclencher la contrainte RESTRICT
-                result = self.db.execute(
-                    text(f"DELETE FROM articles WHERE id = :article_id"),
-                    {"article_id": article.id}
-                )
-                self.db.commit()
+                # Vérifier que la liaison existe toujours avant suppression
+                liaison_avant = self.db.query(ArticleContrat).filter(
+                    ArticleContrat.article_id == article.id
+                ).first()
                 
-                # Si on arrive ici, la contrainte n'a pas fonctionné
+                if not liaison_avant:
+                    print("   [ERREUR] La liaison n'existe pas avant la suppression")
+                    self.erreurs.append("Liaison manquante")
+                    self.db.rollback()
+                    return
+                
+                # Utiliser query().delete() qui fait un DELETE direct sur la table
+                # Cela contourne le cascade ORM et déclenche la contrainte RESTRICT au niveau DB
+                count = self.db.query(Article).filter(Article.id == article.id).delete()
+                self.db.commit()  # Commit déclenche la vérification de la contrainte RESTRICT
+                
+                # Si on arrive ici sans exception, la contrainte n'a pas fonctionné
                 print("   [ERREUR] Contrainte RESTRICT non respectee ! L'article a ete supprime alors qu'il est lie a un contrat.")
                 self.erreurs.append("Contrainte RESTRICT")
                 
@@ -203,7 +213,7 @@ class TestsApplication:
                 self.db.rollback()
                 error_msg = str(e).lower()
                 # Toute exception lors de la suppression d'un article lié est un signe que ça fonctionne
-                if "foreign" in error_msg or "constraint" in error_msg or "violates" in error_msg:
+                if "foreign" in error_msg or "constraint" in error_msg or "violates" in error_msg or "restrict" in error_msg:
                     print(f"   [OK] Contrainte RESTRICT respectee (exception levee: {type(e).__name__})")
                     self.succes.append("Contrainte RESTRICT")
                 else:
@@ -237,11 +247,9 @@ class TestsApplication:
             
             # Essayer de passer directement à "Loué" (doit échouer avec le trigger)
             try:
-                # Mise à jour directe via SQL pour tester le trigger
-                self.db.execute(
-                    text(f"UPDATE articles SET statut = 'Loué' WHERE id = {article.id}")
-                )
-                self.db.commit()
+                # Mise à jour via ORM pour tester le trigger
+                article.statut = StatutArticle.LOUE  # type: ignore[assignment]
+                ArticleRepository.update(self.db, article)
                 print("   [ERREUR] Trigger ne fonctionne pas ! L'article est passe a 'Loue' sans etre 'Disponible'")
                 self.erreurs.append("Trigger validation statut")
             except Exception as e:
