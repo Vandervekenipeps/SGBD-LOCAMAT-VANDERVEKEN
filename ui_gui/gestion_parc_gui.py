@@ -128,7 +128,7 @@ class FenetreGestionParc:
             return
         
         item = self.tree.item(selection[0])
-        article_id = item['values'][0]
+        article_id = int(item['values'][0])
         
         article = ArticleRepository.get_by_id(self.db, article_id)
         if not article:
@@ -145,7 +145,7 @@ class FenetreGestionParc:
             return
         
         item = self.tree.item(selection[0])
-        article_id = item['values'][0]
+        article_id = int(item['values'][0])
         
         if not messagebox.askyesno("Confirmation", f"Êtes-vous sûr de vouloir supprimer l'article {article_id} ?"):
             return

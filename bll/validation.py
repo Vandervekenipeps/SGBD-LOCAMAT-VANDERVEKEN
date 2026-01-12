@@ -7,7 +7,7 @@ Ce module contient toutes les validations métier qui ne peuvent pas
 
 import re
 from datetime import date
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, cast
 from sqlalchemy.orm import Session
 
 from dal.models import Article, StatutArticle
@@ -48,7 +48,7 @@ class ServiceValidation:
         """
         # Règle : Un article ne peut passer à "Loué" que s'il est "Disponible"
         if nouveau_statut == StatutArticle.LOUE:
-            if article.statut != StatutArticle.DISPONIBLE:
+            if article.statut.value != StatutArticle.DISPONIBLE.value:  # type: ignore[comparison-overlap]
                 return False, (
                     f"Impossible de louer l'article {article.id}. "
                     f"L'article est actuellement '{article.statut.value}', "
@@ -87,8 +87,9 @@ class ServiceValidation:
             # Récupérer les articles non disponibles pour le message d'erreur
             articles = db.query(Article).filter(Article.id.in_(article_ids)).all()
             articles_indisponibles = [
-                art.id for art in articles 
-                if art.statut != StatutArticle.DISPONIBLE
+                cast(int, art.id)
+                for art in articles 
+                if art.statut.value != StatutArticle.DISPONIBLE.value  # type: ignore[comparison-overlap]
             ]
             
             message = (

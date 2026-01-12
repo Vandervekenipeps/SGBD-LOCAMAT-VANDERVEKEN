@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlalchemy.orm import Session
 from datetime import date, timedelta
 from decimal import Decimal
+from typing import cast
 
 from config.database import SessionLocal
 from dal.models import Article, Client, Contrat, ArticleContrat, StatutArticle, StatutContrat
@@ -176,7 +177,7 @@ def creer_donnees_test():
             date_creation=date_debut1
         )
         contrat1 = ContratRepository.create(db, contrat1)
-        ContratRepository.ajouter_article(db, contrat1.id, articles[0].id)  # Dell
+        ContratRepository.ajouter_article(db, cast(int, contrat1.id), cast(int, articles[0].id))  # Dell
         articles[0].statut = StatutArticle.LOUE
         ArticleRepository.update(db, articles[0])
         print(f"   [OK] Contrat 1 cree (en cours, client VIP)")
@@ -194,7 +195,7 @@ def creer_donnees_test():
             date_creation=date_debut2
         )
         contrat2 = ContratRepository.create(db, contrat2)
-        ContratRepository.ajouter_article(db, contrat2.id, articles[1].id)  # HP
+        ContratRepository.ajouter_article(db, cast(int, contrat2.id), cast(int, articles[1].id))  # HP
         articles[1].statut = StatutArticle.DISPONIBLE  # Restitué
         ArticleRepository.update(db, articles[1])
         print(f"   [OK] Contrat 2 cree (termine, dans les 30 derniers jours)")
@@ -211,7 +212,7 @@ def creer_donnees_test():
             date_creation=date_debut3
         )
         contrat3 = ContratRepository.create(db, contrat3)
-        ContratRepository.ajouter_article(db, contrat3.id, articles[4].id)  # Samsung
+        ContratRepository.ajouter_article(db, cast(int, contrat3.id), cast(int, articles[4].id))  # Samsung
         articles[4].statut = StatutArticle.LOUE
         ArticleRepository.update(db, articles[4])
         print(f"   [OK] Contrat 3 cree (EN RETARD - date depassee)")
@@ -228,7 +229,7 @@ def creer_donnees_test():
             date_creation=date_debut4
         )
         contrat4 = ContratRepository.create(db, contrat4)
-        ContratRepository.ajouter_article(db, contrat4.id, articles[2].id)  # Canon
+        ContratRepository.ajouter_article(db, cast(int, contrat4.id), cast(int, articles[2].id))  # Canon
         articles[2].statut = StatutArticle.LOUE
         ArticleRepository.update(db, articles[2])
         print(f"   [OK] Contrat 4 cree (en cours, recent)")
@@ -246,7 +247,7 @@ def creer_donnees_test():
             date_creation=date_debut5
         )
         contrat5 = ContratRepository.create(db, contrat5)
-        ContratRepository.ajouter_article(db, contrat5.id, articles[5].id)  # Lenovo
+        ContratRepository.ajouter_article(db, cast(int, contrat5.id), cast(int, articles[5].id))  # Lenovo
         articles[5].statut = StatutArticle.DISPONIBLE  # Restitué
         ArticleRepository.update(db, articles[5])
         print(f"   [OK] Contrat 5 cree (termine ce mois, prix eleve)")
