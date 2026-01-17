@@ -301,11 +301,11 @@ class MenuPrincipal:
             return
         
         try:
-            if ArticleRepository.delete(self.db, article_id):
-                print("✅ Article supprimé avec succès.")
+            succes, message = ArticleRepository.delete(self.db, article_id)
+            if succes:
+                print(f"✅ {message}")
             else:
-                print(f"❌ Article {article_id} introuvable ou impossible à supprimer "
-                      f"(peut-être lié à un contrat).")
+                print(f"❌ {message}")
         except Exception as e:
             print(f"❌ Erreur : {e}")
         
@@ -319,8 +319,9 @@ class MenuPrincipal:
             print("=" * 80)
             print("1. Lister tous les clients")
             print("2. Ajouter un client")
-            print("3. Supprimer un client")
-            print("4. Retour au menu principal")
+            print("3. Modifier un client")
+            print("4. Supprimer un client")
+            print("5. Retour au menu principal")
             
             choix = input("\nVotre choix : ").strip()
             
@@ -329,8 +330,10 @@ class MenuPrincipal:
             elif choix == "2":
                 self.ajouter_client()
             elif choix == "3":
-                self.supprimer_client()
+                self.modifier_client()
             elif choix == "4":
+                self.supprimer_client()
+            elif choix == "5":
                 break
             else:
                 print("❌ Choix invalide.")
@@ -408,6 +411,110 @@ class MenuPrincipal:
             
             client = ClientRepository.create(self.db, client)
             print(f"\n✅ Client créé avec succès (ID: {client.id})")
+            
+        except Exception as e:
+            print(f"\n❌ Erreur : {e}")
+        
+        input("\nAppuyez sur Entrée pour continuer...")
+    
+    def modifier_client(self):
+        """Modifie un client existant."""
+        print("\n" + "=" * 80)
+        print("MODIFICATION D'UN CLIENT")
+        print("=" * 80)
+        
+        # Afficher la liste des clients pour faciliter la sélection
+        clients = ClientRepository.get_all(self.db)
+        if not clients:
+            print("\n❌ Aucun client enregistré.")
+            input("\nAppuyez sur Entrée pour continuer...")
+            return
+        
+        print("\nListe des clients :")
+        print("-" * 80)
+        for client in clients:
+            vip_status = "⭐ VIP" if bool(client.est_vip) else ""
+            telephone = f" | Tél: {client.telephone}" if client.telephone is not None and str(client.telephone).strip() else ""
+            print(
+                f"ID: {client.id} | {client.prenom} {client.nom} | "
+                f"Email: {client.email}{telephone} {vip_status}"
+            )
+        print("-" * 80)
+        
+        try:
+            client_id = self._input_int("\nID du client à modifier : ", allow_empty=True)
+            
+            if client_id is None:
+                print("❌ L'ID du client est obligatoire.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            client = ClientRepository.get_by_id(self.db, client_id)
+            if not client:
+                print(f"❌ Client avec l'ID {client_id} introuvable.")
+                input("\nAppuyez sur Entrée pour continuer...")
+                return
+            
+            print(f"\nClient actuel : {client.prenom} {client.nom} ({client.email})")
+            print("\nLaissez vide pour conserver la valeur actuelle.")
+            
+            # Modification du nom
+            nouveau_nom = input(f"Nom [{client.nom}] : ").strip()  # type: ignore[arg-type]
+            if nouveau_nom:
+                client.nom = nouveau_nom  # type: ignore[assignment]
+            
+            # Modification du prénom
+            nouveau_prenom = input(f"Prénom [{client.prenom}] : ").strip()  # type: ignore[arg-type]
+            if nouveau_prenom:
+                client.prenom = nouveau_prenom  # type: ignore[assignment]
+            
+            # Modification de l'email
+            nouvel_email = input(f"Email [{client.email}] : ").strip()  # type: ignore[arg-type]
+            if nouvel_email:
+                # Vérifier si l'email est déjà utilisé par un autre client
+                client_existant = ClientRepository.get_by_email(self.db, nouvel_email)
+                if client_existant and client_existant.id != client.id:  # type: ignore[comparison-overlap]
+                    print(f"❌ L'email '{nouvel_email}' est déjà utilisé par un autre client.")
+                    input("\nAppuyez sur Entrée pour continuer...")
+                    return
+                client.email = nouvel_email  # type: ignore[assignment]
+            
+            # Modification du téléphone
+            telephone_actuel = client.telephone if client.telephone is not None else '(vide)'  # type: ignore[comparison-overlap]
+            nouveau_telephone = input(f"Téléphone [{telephone_actuel}] : ").strip()
+            if nouveau_telephone:
+                # Validation du téléphone (BLL)
+                telephone_valide, msg_telephone = ServiceValidation.valider_telephone(nouveau_telephone)
+                if not telephone_valide:
+                    print(f"❌ {msg_telephone}")
+                    input("\nAppuyez sur Entrée pour continuer...")
+                    return
+                client.telephone = nouveau_telephone  # type: ignore[assignment]
+            elif nouveau_telephone == "" and client.telephone is not None:  # type: ignore[comparison-overlap]
+                # Si l'utilisateur entre une chaîne vide, on garde None
+                client.telephone = None  # type: ignore[assignment]
+            
+            # Modification de l'adresse
+            adresse_actuelle = client.adresse if client.adresse is not None else '(vide)'  # type: ignore[comparison-overlap]
+            nouvelle_adresse = input(f"Adresse [{adresse_actuelle}] : ").strip()
+            if nouvelle_adresse:
+                client.adresse = nouvelle_adresse  # type: ignore[assignment]
+            elif nouvelle_adresse == "" and client.adresse is not None:  # type: ignore[comparison-overlap]
+                # Si l'utilisateur entre une chaîne vide, on garde None
+                client.adresse = None  # type: ignore[assignment]
+            
+            # Modification du statut VIP
+            vip_actuel = "Oui" if bool(client.est_vip) else "Non"  # type: ignore[arg-type]
+            nouveau_vip = input(f"Client VIP (o/n) [{vip_actuel}] : ").strip().lower()
+            if nouveau_vip == 'o':
+                client.est_vip = True  # type: ignore[assignment]
+            elif nouveau_vip == 'n':
+                client.est_vip = False  # type: ignore[assignment]
+            # Si vide, on garde la valeur actuelle
+            
+            # Mettre à jour le client
+            ClientRepository.update(self.db, client)
+            print(f"\n✅ Client {client_id} modifié avec succès.")
             
         except Exception as e:
             print(f"\n❌ Erreur : {e}")
