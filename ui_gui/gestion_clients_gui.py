@@ -43,6 +43,7 @@ class FenetreGestionClients:
         btn_frame.pack(pady=10)
         
         ttk.Button(btn_frame, text="➕ Ajouter un Client", command=self._ajouter_client).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="✏️ Modifier un Client", command=self._modifier_client).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="🗑️ Supprimer un Client", command=self._supprimer_client).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="🔄 Rafraîchir", command=self._charger_liste).pack(side=tk.LEFT, padx=5)
         
@@ -109,6 +110,23 @@ class FenetreGestionClients:
     def _ajouter_client(self):
         """Ouvre une fenêtre pour ajouter un client."""
         FenetreAjoutClient(self.window, self.db, self._charger_liste)
+    
+    def _modifier_client(self):
+        """Modifie le client sélectionné."""
+        selection = self.tree.selection()
+        if not selection:
+            messagebox.showwarning("Aucune sélection", "Veuillez sélectionner un client à modifier.")
+            return
+        
+        item = self.tree.item(selection[0])
+        client_id = int(item['values'][0])
+        
+        client = ClientRepository.get_by_id(self.db, client_id)
+        if not client:
+            messagebox.showerror("Erreur", f"Client avec l'ID {client_id} introuvable.")
+            return
+        
+        FenetreModifierClient(self.window, self.db, client, self._charger_liste)
     
     def _supprimer_client(self):
         """Supprime le client sélectionné."""
@@ -239,6 +257,125 @@ class FenetreAjoutClient:
             
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de la création : {e}")
+
+
+class FenetreModifierClient:
+    """Fenêtre pour modifier un client existant."""
+    
+    def __init__(self, parent, db: Session, client: Client, callback_refresh):
+        self.db = db
+        self.client = client
+        self.callback_refresh = callback_refresh
+        
+        self.window = tk.Toplevel(parent)
+        self.window.title("Modifier un Client")
+        self.window.geometry("500x400")
+        
+        self._creer_interface()
+    
+    def _creer_interface(self):
+        """Crée l'interface de la fenêtre."""
+        ttk.Label(
+            self.window, 
+            text=f"Modifier le Client (ID: {self.client.id})", 
+            font=("Arial", 14, "bold")
+        ).pack(pady=10)
+        
+        # Formulaire
+        form_frame = ttk.Frame(self.window, padding=20)
+        form_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Champs pré-remplis avec les valeurs actuelles
+        ttk.Label(form_frame, text="Nom *:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        self.nom = ttk.Entry(form_frame, width=30)
+        self.nom.insert(0, str(self.client.nom))  # type: ignore[arg-type]
+        self.nom.grid(row=0, column=1, pady=5)
+        
+        ttk.Label(form_frame, text="Prénom *:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.prenom = ttk.Entry(form_frame, width=30)
+        self.prenom.insert(0, str(self.client.prenom))  # type: ignore[arg-type]
+        self.prenom.grid(row=1, column=1, pady=5)
+        
+        ttk.Label(form_frame, text="Email *:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        self.email = ttk.Entry(form_frame, width=30)
+        self.email.insert(0, str(self.client.email))  # type: ignore[arg-type]
+        self.email.grid(row=2, column=1, pady=5)
+        
+        ttk.Label(form_frame, text="Téléphone:").grid(row=3, column=0, sticky=tk.W, pady=5)
+        self.telephone = ttk.Entry(form_frame, width=30)
+        if self.client.telephone is not None:  # type: ignore[comparison-overlap]
+            self.telephone.insert(0, str(self.client.telephone))  # type: ignore[arg-type]
+        self.telephone.grid(row=3, column=1, pady=5)
+        
+        ttk.Label(form_frame, text="Adresse:").grid(row=4, column=0, sticky=tk.W, pady=5)
+        self.adresse = ttk.Entry(form_frame, width=30)
+        if self.client.adresse is not None:  # type: ignore[comparison-overlap]
+            self.adresse.insert(0, str(self.client.adresse))  # type: ignore[arg-type]
+        self.adresse.grid(row=4, column=1, pady=5)
+        
+        ttk.Label(form_frame, text="Client VIP:").grid(row=5, column=0, sticky=tk.W, pady=5)
+        self.est_vip = tk.BooleanVar(value=bool(self.client.est_vip))  # type: ignore[arg-type]
+        ttk.Checkbutton(form_frame, variable=self.est_vip).grid(row=5, column=1, sticky=tk.W, pady=5)
+        
+        # Boutons
+        btn_frame = ttk.Frame(self.window)
+        btn_frame.pack(pady=10)
+        
+        ttk.Button(btn_frame, text="Modifier", command=self._modifier).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Annuler", command=self.window.destroy).pack(side=tk.LEFT, padx=5)
+    
+    def _modifier(self):
+        """Modifie le client."""
+        try:
+            # Validation des champs obligatoires
+            if not all([self.nom.get(), self.prenom.get(), self.email.get()]):
+                messagebox.showerror("Erreur", "Les champs Nom, Prénom et Email sont obligatoires.")
+                return
+            
+            # Validation basique de l'email
+            if '@' not in self.email.get() or '.' not in self.email.get().split('@')[-1]:
+                messagebox.showerror("Erreur", "Format d'email invalide.")
+                return
+            
+            # Vérifier si l'email a changé et s'il est déjà utilisé par un autre client
+            if self.email.get() != self.client.email:  # type: ignore[comparison-overlap]
+                client_existant = ClientRepository.get_by_email(self.db, self.email.get())
+                if client_existant is not None and client_existant.id != self.client.id:  # type: ignore[comparison-overlap, operator]
+                    messagebox.showerror("Erreur", f"L'email '{self.email.get()}' est déjà utilisé par un autre client.")
+                    return
+            
+            # Validation du téléphone (BLL)
+            telephone = self.telephone.get().strip() or None
+            if telephone:
+                telephone_valide, msg_telephone = ServiceValidation.valider_telephone(telephone)
+                if not telephone_valide:
+                    messagebox.showerror("Erreur", msg_telephone)
+                    return
+            
+            # Mettre à jour le client
+            self.client.nom = self.nom.get()  # type: ignore[assignment]
+            self.client.prenom = self.prenom.get()  # type: ignore[assignment]
+            self.client.email = self.email.get()  # type: ignore[assignment]
+            self.client.telephone = telephone  # type: ignore[assignment]
+            self.client.adresse = self.adresse.get() or None  # type: ignore[assignment]
+            self.client.est_vip = self.est_vip.get()  # type: ignore[assignment]
+            
+            try:
+                ClientRepository.update(self.db, self.client)
+                messagebox.showinfo("Succès", f"Client {self.client.id} modifié avec succès.")
+                self.callback_refresh()
+                self.window.destroy()
+            except Exception as e:
+                self.db.rollback()
+                # Vérifier si c'est une erreur d'unicité (email dupliqué)
+                error_msg = str(e).lower()
+                if "unique" in error_msg or "duplicate" in error_msg or "email" in error_msg:
+                    messagebox.showerror("Erreur", f"L'email '{self.email.get()}' est déjà utilisé par un autre client.")
+                else:
+                    messagebox.showerror("Erreur", f"Erreur lors de la modification : {e}")
+            
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors de la validation : {e}")
 
 
 
