@@ -70,22 +70,76 @@ class ArticleRepository:
         return article
     
     @staticmethod
-    def delete(db: Session, article_id: int) -> bool:
+    def delete(db: Session, article_id: int) -> Tuple[bool, str]:
         """
         Supprime un article.
         
-        ATTENTION : Cette opération échouera si l'article est lié à un contrat
-        (contrainte RESTRICT sur la FK).
+        Règles de suppression :
+        - Un article avec statut "Loué" ne peut pas être supprimé
+        - Un article avec statut "En Maintenance" ne peut pas être supprimé
+        - Un article lié à un contrat actif (EN_COURS ou EN_ATTENTE) ne peut pas être supprimé
+        - Un article lié à un contrat historique (TERMINE ou ANNULE) ne peut pas être supprimé
+          (contrainte RESTRICT sur la FK)
         
+        Args:
+            db: Session de base de données
+            article_id: ID de l'article à supprimer
+            
         Returns:
-            True si la suppression a réussi, False sinon
+            Tuple (succes, message)
+            - succes: True si la suppression a réussi, False sinon
+            - message: Message d'erreur ou de succès
         """
         article = ArticleRepository.get_by_id(db, article_id)
-        if article:
+        if not article:
+            return False, f"Article avec l'ID {article_id} introuvable."
+        
+        # Vérifier le statut de l'article
+        if article.statut == StatutArticle.LOUE:  # type: ignore[comparison-overlap]
+            return False, (
+                f"Impossible de supprimer l'article {article_id} ({article.marque} {article.modele}). "
+                f"L'article est actuellement loué (statut: {article.statut.value}). "
+                f"Veuillez d'abord restituer l'article ou modifier son statut."
+            )
+        
+        if article.statut == StatutArticle.EN_MAINTENANCE:  # type: ignore[comparison-overlap]
+            return False, (
+                f"Impossible de supprimer l'article {article_id} ({article.marque} {article.modele}). "
+                f"L'article est actuellement en maintenance (statut: {article.statut.value}). "
+                f"Veuillez d'abord terminer la maintenance ou modifier son statut."
+            )
+        
+        # Vérifier si l'article est dans un contrat actif (EN_COURS ou EN_ATTENTE)
+        contrats_actifs = db.query(Contrat).join(ArticleContrat).filter(
+            and_(
+                ArticleContrat.article_id == article_id,
+                Contrat.statut.in_([StatutContrat.EN_COURS, StatutContrat.EN_ATTENTE])
+            )
+        ).all()
+        
+        if contrats_actifs:
+            contrats_ids = [c.id for c in contrats_actifs]
+            return False, (
+                f"Impossible de supprimer l'article {article_id} ({article.marque} {article.modele}). "
+                f"L'article est lié à un ou plusieurs contrats actifs : {contrats_ids}. "
+                f"Veuillez d'abord terminer ou annuler ces contrats."
+            )
+        
+        # Tenter la suppression (la contrainte RESTRICT protégera contre les contrats historiques)
+        try:
             db.delete(article)
             db.commit()
-            return True
-        return False
+            return True, f"Article {article_id} ({article.marque} {article.modele}) supprimé avec succès."
+        except Exception as e:
+            db.rollback()
+            # Si c'est une erreur d'intégrité (RESTRICT), c'est qu'il y a un contrat historique
+            if "restrict" in str(e).lower() or "foreign key" in str(e).lower():
+                return False, (
+                    f"Impossible de supprimer l'article {article_id} ({article.marque} {article.modele}). "
+                    f"L'article est lié à un ou plusieurs contrats (historique). "
+                    f"Pour préserver l'intégrité des données, la suppression est interdite."
+                )
+            return False, f"Erreur lors de la suppression : {str(e)}"
     
     @staticmethod
     def verifier_disponibilite(db: Session, article_ids: List[int]) -> bool:
@@ -135,6 +189,13 @@ class ClientRepository:
     def get_by_email(db: Session, email: str) -> Optional[Client]:
         """Récupère un client par son email."""
         return db.query(Client).filter(Client.email == email).first()
+    
+    @staticmethod
+    def update(db: Session, client: Client) -> Client:
+        """Met à jour un client existant."""
+        db.commit()
+        db.refresh(client)
+        return client
     
     @staticmethod
     def delete(db: Session, client_id: int) -> Tuple[bool, str]:
