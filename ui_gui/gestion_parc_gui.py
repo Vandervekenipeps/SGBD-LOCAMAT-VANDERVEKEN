@@ -151,15 +151,12 @@ class FenetreGestionParc:
             return
         
         try:
-            if ArticleRepository.delete(self.db, article_id):
-                messagebox.showinfo("Succès", "Article supprimé avec succès.")
+            succes, message = ArticleRepository.delete(self.db, article_id)
+            if succes:
+                messagebox.showinfo("Succès", message)
                 self._charger_liste()
             else:
-                messagebox.showerror(
-                    "Erreur",
-                    f"Impossible de supprimer l'article {article_id}.\n"
-                    "Il est peut-être lié à un contrat."
-                )
+                messagebox.showerror("Erreur", message)
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de la suppression : {e}")
 
